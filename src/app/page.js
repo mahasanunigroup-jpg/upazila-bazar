@@ -1,69 +1,243 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import HomeHeader from "@/components/HomeHeader";
+import ServiceHighlights from "@/components/ServiceHighlights";
+import CategorySidebar from "@/components/CategorySidebar";
+import FlashDealBanner from "@/components/FlashDealBanner";
+import ProductGridSection from "@/components/ProductGridSection";
+import ProductModal from "@/components/ProductModal";
+import CartDrawer from "@/components/CartDrawer";
+import { Store, PhoneCall, MapPin, Search } from "lucide-react";
+
+const SUB_MAP = {
+  "মুদি": ["মুদি", "চাল ও ডাল", "ভোজ্য তেল", "আটা ও ময়দা", "লবণ ও চিনি"],
+  "সবজি": ["সবজি", "নিত্যদিনের সবজি", "তাজা শাক", "আলু, পেঁয়াজ ও রসুন"],
+  "ফল": ["ফল", "মৌসুমী ফল", "বারোমাসি ফল", "খেজুর ও শুকনো ফল"],
+  "মাছ ও মাংস": ["মাছ ও মাংস", "নদীর তাজা মাছ", "দেশী ও ব্রয়লার মুরগি", "গরু ও খাসির মাংস"],
+  "দুগ্ধ": ["দুগ্ধ", "তরল ও গুঁড়া দুধ", "হাঁস ও মুরগির ডিম", "খাঁটি ঘি ও মাখন"],
+  "মসলা": ["মসলা", "গুঁড়া মসলা", "আস্ত গরম মসলা", "আদা ও রসুন বাটা"],
+  "স্ন্যাকস": ["স্ন্যাকস", "বিস্কুট ও কেক", "চা ও কফি", "মুড়ি ও চানাচুর"],
+};
+
+export default function HomePage() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cart, setCart] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [addedId, setAddedId] = useState(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("সব পণ্য");
+  const [selectedShop, setSelectedShop] = useState("সব দোকান");
+  const [sortBy, setSortBy] = useState("newest");
+  const [showWishlistOnly, setShowWishlistOnly] = useState(false);
+
+  const [location, setLocation] = useState({
+    district: "",
+    upazila: "",
+    union: "",
+    moholla: "",
+  });
+
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then((data) => setProducts(Array.isArray(data) ? data : []))
+      .finally(() => setLoading(false));
+
+    setCart(JSON.parse(localStorage.getItem("upazila_cart") || "[]"));
+    setWishlist(JSON.parse(localStorage.getItem("upazila_wishlist") || "[]"));
+
+    const savedLoc = JSON.parse(localStorage.getItem("upazila_full_location") || "null");
+    if (savedLoc) setLocation(savedLoc);
+  }, []);
+
+  const syncCart = (updatedCart) => {
+    setCart(updatedCart);
+    localStorage.setItem("upazila_cart", JSON.stringify(updatedCart));
+  };
+
+  const handleAddToCart = (product) => {
+    const idx = cart.findIndex((item) => item._id === product._id);
+    const updated = [...cart];
+    if (idx > -1) updated[idx].quantity += 1;
+    else
+      updated.push({
+        _id: product._id,
+        title: product.title,
+        price: product.price,
+        image: product.image,
+        quantity: 1,
+        sellerId: product.sellerId || "seller_default",
+        shopName: product.shopName || "উপজেলা ভেরিফায়েড স্টোর",
+      });
+
+    syncCart(updated);
+    setAddedId(product._id);
+    setTimeout(() => setAddedId(null), 1000);
+  };
+
+  const handleUpdateQty = (id, newQty) => {
+    if (newQty < 1) return handleRemoveFromCart(id);
+    syncCart(cart.map((item) => (item._id === id ? { ...item, quantity: newQty } : item)));
+  };
+
+  const handleRemoveFromCart = (id) => {
+    syncCart(cart.filter((item) => item._id !== id));
+  };
+
+  const toggleWishlist = (e, id) => {
+    e.stopPropagation();
+    const updated = wishlist.includes(id) ? wishlist.filter((item) => item !== id) : [...wishlist, id];
+    setWishlist(updated);
+    localStorage.setItem("upazila_wishlist", JSON.stringify(updated));
+  };
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("সব পণ্য");
+    setSelectedShop("সব দোকান");
+    setSortBy("newest");
+    setShowWishlistOnly(false);
+  };
+
+  const availableShops = [
+    "সব দোকান",
+    ...new Set(
+      products
+        .filter((p) => {
+          const matchDist = !location.district || !p.district || p.district === location.district;
+          const matchUpz = !location.upazila || !p.upazila || p.upazila === location.upazila;
+          return matchDist && matchUpz;
+        })
+        .map((p) => p.shopName || "উপজেলা ভেরিফায়েড স্টোর")
+    ),
+  ];
+
+  const filteredProducts = products
+    .filter((p) => {
+      const q = searchQuery.trim().toLowerCase();
+
+      // ১. পণ্যের নাম, দোকানের নাম অথবা দোকানদারের নাম দিয়ে সার্চ (নিরাপদ চেকসহ)
+      const titleMatch = (p.title || "").toLowerCase().includes(q);
+      const shopSearchMatch = (p.shopName || "উপজেলা ভেরিফায়েড স্টোর").toLowerCase().includes(q);
+      const sellerSearchMatch = (p.sellerName || "").toLowerCase().includes(q);
+      const matchSearch = !q || titleMatch || shopSearchMatch || sellerSearchMatch;
+
+      // ২. ক্যাটাগরি ও দোকান ফিল্টার
+      const allowedCats = SUB_MAP[selectedCategory] || [selectedCategory];
+      const matchCat = selectedCategory === "সব পণ্য" || allowedCats.includes(p.category);
+      const matchShop = selectedShop === "সব দোকান" || (p.shopName || "উপজেলা ভেরিফায়েড স্টোর") === selectedShop;
+
+      // ৩. উইশলিস্ট ও লোকেশন ফিল্টার (সার্চ করার সময় যেন লোকেশন বা দোকান আটকে না দেয়)
+      const matchWish = !showWishlistOnly || wishlist.includes(p._id);
+      const matchDistrict = !location.district || !p.district || p.district === location.district;
+      const matchUpazila = !location.upazila || !p.upazila || p.upazila === location.upazila;
+      const matchUnion = !location.union || !p.union || p.union.toLowerCase().includes(location.union.toLowerCase());
+
+      if (q) {
+        // সার্চ বক্সে কিছু লিখলে জেলা/উপজেলার ভেতরের সব দোকান ও পণ্য থেকে দেখাবে
+        return matchSearch && matchDistrict && matchUpazila;
+      }
+
+      return matchCat && matchShop && matchWish && matchDistrict && matchUpazila && matchUnion;
+    })
+    .sort((a, b) => (sortBy === "low-to-high" ? a.price - b.price : sortBy === "high-to-low" ? b.price - a.price : 0));
+
+
+  const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const hasActiveFilter = searchQuery || selectedCategory !== "সব পণ্য" || selectedShop !== "সব দোকান" || showWishlistOnly;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-between">
+      <div>
+        <HomeHeader
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          location={location}
+          setLocation={setLocation}
+          totalCartItems={totalCartItems}
+          onOpenCart={() => setIsCartOpen(true)}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.js
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        <ServiceHighlights />
+
+        <div className="max-w-6xl mx-auto pt-6 px-4 md:hidden">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="পণ্য, দোকানের নাম বা দোকানদারের নাম লিখুন..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          </div>
         </div>
-      </main>
+
+        <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-6 items-start">
+          <CategorySidebar
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            showWishlistOnly={showWishlistOnly}
+            setShowWishlistOnly={setShowWishlistOnly}
+            hasActiveFilter={hasActiveFilter}
+            resetFilters={resetFilters}
+          />
+
+          <main className="flex-1 w-full">
+            <FlashDealBanner onSelectOffer={() => setSortBy("low-to-high")} />
+
+            <ProductGridSection
+              loading={loading}
+              filteredProducts={filteredProducts}
+              availableShops={availableShops}
+              selectedShop={selectedShop}
+              setSelectedShop={setSelectedShop}
+              location={location}
+              showWishlistOnly={showWishlistOnly}
+              selectedCategory={selectedCategory}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              hasActiveFilter={hasActiveFilter}
+              resetFilters={resetFilters}
+              wishlist={wishlist}
+              toggleWishlist={toggleWishlist}
+              setSelectedProduct={setSelectedProduct}
+              handleAddToCart={handleAddToCart}
+              addedId={addedId}
+            />
+          </main>
+        </div>
+      </div>
+
+      <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAddToCart={handleAddToCart} />
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} onUpdateQty={handleUpdateQty} onRemove={handleRemoveFromCart} />
+
+      <footer className="bg-white border-t border-gray-200 mt-12">
+        <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-600">
+          <div className="flex items-center gap-2 font-bold text-green-600 text-base">
+            <Store className="w-5 h-5" /> উপজেলা বাজার
+          </div>
+          <div className="flex flex-wrap justify-center items-center gap-4 text-xs sm:text-sm">
+            <span className="flex items-center gap-1">
+              <MapPin className="w-4 h-4 text-green-600" /> {location.upazila || "সারা বাংলাদেশ"}
+            </span>
+            <span className="flex items-center gap-1">
+              <PhoneCall className="w-4 h-4 text-green-600" /> ০১৭০০-০০০০০০
+            </span>
+            <Link href="/seller/dashboard" className="text-green-600 font-semibold hover:underline">
+              সেলার প্যানেল
+            </Link>
+          </div>
+          <p className="text-xs text-gray-400">© ২০২৬ উপজেলা বাজার। সর্বস্বত্ব সংরক্ষিত।</p>
+        </div>
+      </footer>
     </div>
   );
 }
