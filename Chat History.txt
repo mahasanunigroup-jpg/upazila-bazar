@@ -1,0 +1,1 @@
+"প্রজেক্ট: উপজেলা বাজার (Next.js App Router + MongoDB + Cloudinary + Tailwind)। আমার হোম পেজ, ৬৪ জেলার সার্চেবল লোকেশন ফিল্টার, JWT লগইন-রেজিস্ট্রেশন ও middleware.js সম্পন্ন হয়েছে। এখন আমরা প্রোডাক্ট ও চেকআউটে sellerId ভেরিফাই করে সেলার অর্ডার ড্যাশবোর্ড (seller/orders), অ্যাডমিন অর্ডার লিস্ট (admin/orders) এবং রাইডার প্যানেল (rider/dashboard) সেটআপ ও টেস্ট করব।"

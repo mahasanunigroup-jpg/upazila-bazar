@@ -1,20 +1,29 @@
-// models/User.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  phone: { type: String, required: true },
-  role: { 
-    type: String, 
-    enum: ['customer', 'seller', 'rider', 'admin'], 
-    default: 'customer' 
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, unique: true, sparse: true },
+    phone: { type: String, unique: true, sparse: true },
+    password: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["customer", "seller", "rider", "admin"],
+      default: "customer",
+    },
+    shopName: { type: String, default: "" },
+    district: { type: String, default: "" },
+    upazila: { type: String, default: "" },
+    union: { type: String, default: "" },
+    address: { type: String, default: "" },
   },
-  district: { type: String, required: true }, // জেলা
-  upazila: { type: String, required: true },   // উপজেলা
-  address: { type: String, required: true },   // ডিটেইল ঠিকানা
-  createdAt: { type: Date, default: Date.now }
-});
+  { timestamps: true }
+);
 
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+// ডেভেলপমেন্ট মোডে পুরনো স্কিমা ক্যাশ মুছে নতুন ফিল্ড লোড করার জন্য
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
+const User = mongoose.model("User", userSchema);
+export default User;

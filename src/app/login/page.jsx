@@ -29,15 +29,20 @@ export default function Login() {
         localStorage.setItem('user', JSON.stringify(data.user));
         
         // 🚀 ৩. রোল অনুযায়ী অটোমেটিক ড্যাশবোর্ডে রিডাইরেক্ট করার লজিক
-        setTimeout(() => {
+               setTimeout(() => {
           if (data.user.role === 'customer') {
             router.push('/orders');
           } else if (data.user.role === 'seller') {
-            router.push('/seller');
+            router.push('/seller/dashboard');
           } else if (data.user.role === 'rider') {
-            router.push('/rider');
+            router.push('/rider/dashboard');
+          } else if (data.user.role === 'admin') {
+            router.push('/admin/orders');
+          } else {
+            router.push('/');
           }
-        }, 1200); // ১.২ সেকেন্ড মেসেজটি দেখিয়ে পেজ চেঞ্জ হবে
+          router.refresh();
+        }, 1200);
 
       } else {
         setError(data.error);
