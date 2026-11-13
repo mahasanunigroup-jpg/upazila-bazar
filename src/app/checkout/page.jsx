@@ -46,44 +46,42 @@ export default function CheckoutPage() {
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
-    if (cartItems.length === 0) {
-      alert("আপনার কার্ট খালি! অনুগ্রহ করে আগে পণ্য যোগ করুন।");
-      return;
-    }
+    if (cartItems.length === 0) return alert("আপনার কার্ট খালি!");
 
     setLoading(true);
-
     try {
-      const response = await fetch("/api/orders/checkout", {
+      // localStorage থেকে সিলেক্ট করা জেলা ও উপজেলা বের করা
+      const savedLoc = JSON.parse(localStorage.getItem("upazila_full_location") || "null");
+
+      const orderPayload = {
+        customer_name: formData.name,
+        customer_phone: formData.phone,
+        customer_address: formData.address,
+        district: savedLoc?.district || "কিশোরগঞ্জ",
+        upazila: savedLoc?.upazila || "ভৈরব",
+        payment_method: "Cash on Delivery",
+        items: cartItems,
+      };
+
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerName: formData.name,
-          customerPhone: formData.phone,
-          customerAddress: formData.address,
-          totalAmount: totalAmount,
-          upazila: "ভৈরব",
-          items: cartItems.map((item) => ({
-            title: item.title,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
-      const data = await response.json();
-      setLoading(false);
+      const data = await res.json();
 
-      if (response.ok && data.orderId) {
-        // অর্ডার সফল হলে কার্ট খালি করে দেওয়া
-        localStorage.removeItem("upazila_cart");
-        router.push(`/orders/${data.orderId}`);
+      if (res.ok && data.success) {
+        localStorage.removeItem("upazila_cart"); // কার্ট খালি করা
+        alert(`ধন্যবাদ! আপনার অর্ডারটি সফলভাবে সম্পন্ন হয়েছে। অর্ডার আইডি: ${data.order.orderId}`);
+        router.push("/orders"); // কাস্টমারের অর্ডার হিস্ট্রি পেজে নিয়ে যাবে
       } else {
-        alert(data.message || "অর্ডার সম্পন্ন করতে সমস্যা হয়েছে।");
+        alert(data.error || "অর্ডার করতে সমস্যা হয়েছে!");
       }
     } catch (error) {
+      alert("নেটওয়ার্ক সমস্যা হয়েছে! আবার চেষ্টা করুন।");
+    } finally {
       setLoading(false);
-      alert("সার্ভার কানেকশনে সমস্যা হয়েছে।");
     }
   };
 

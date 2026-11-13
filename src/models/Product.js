@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 
 const ProductSchema = new mongoose.Schema(
@@ -11,11 +12,16 @@ const ProductSchema = new mongoose.Schema(
     district: { type: String, default: "কিশোরগঞ্জ" },
     upazila: { type: String, default: "ভৈরব" },
     union: { type: String, default: "" },
-    sellerId: { type: String, default: "seller_default" },
-    shopName: { type: String, default: "উপজেলা ভেরিফায়েড স্টোর" },
-    sellerName: { type: String, default: "স্থানীয় বিক্রেতা" },
+    sellerId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "User", 
+      required: true 
+    },
+    shopName: { type: String, default: "উপজেলা ভেরিফাইড স্টোর" },
+    sellerName: { type: String, default: "স্থানীয় বিক্রেতা" },
   },
   { timestamps: true }
 );
+ProductSchema.index({ sellerId: 1, upazila: 1 });
 
 export default mongoose.models.Product || mongoose.model("Product", ProductSchema);

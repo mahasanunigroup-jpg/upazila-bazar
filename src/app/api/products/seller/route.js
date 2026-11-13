@@ -1,108 +1,58 @@
-// src/app/api/products/seller/route.js
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
-import { NextResponse } from "next/server";
-import { jwtVerify } from "jose";
-import mongoose from "mongoose";
-
-const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET || 'your-super-secret-key');
-
-export async function GET(req) {
-  try {
-    await connectDB();
-    const token = req.cookies.get('seller_token')?.value;
-    if (!token) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-
-    const { payload } = await jwtVerify(token, SECRET_KEY);
-    const sellerId = payload.id;
-    const queryId = mongoose.Types.ObjectId.isValid(sellerId) ? new mongoose.Types.ObjectId(sellerId) : sellerId;
-
-    const sellerProducts = await Product.find({ sellerId: queryId });
-    return NextResponse.json({ success: true, products: sellerProducts });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "সার্ভার এরর!" }, { status: 500 });
-  }
-}
 
 export async function POST(req) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: "অনুগ্রহ করে আগে লগইন করুন" }, { status: 401 });
+    }
+
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+
+    if (payload.role !== "seller") {
+      return NextResponse.json({ error: "শুধুমাত্র সেলার পণ্য আপলোড করতে পারবেন" }, { status: 403 });
+    }
+
+    // টোকেন থেকে সেলারের আসল ObjectId বের করা
+    const currentSellerId = payload.userId || payload.id || payload._id;
+    if (!currentSellerId) {
+      return NextResponse.json({ error: "টোকেনে সেলার আইডি পাওয়া যায়নি" }, { status: 400 });
+    }
+
     await connectDB();
-    const token = req.cookies.get('seller_token')?.value;
-    if (!token) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-
-    const { payload } = await jwtVerify(token, SECRET_KEY);
-    const sellerId = payload.id;
-    const district = payload.district || "Dhaka";
-    const upazila = payload.upazila || "Savar";
-    const finalSellerId = mongoose.Types.ObjectId.isValid(sellerId) ? new mongoose.Types.ObjectId(sellerId) : new mongoose.Types.ObjectId();
-
     const body = await req.json();
 
-    // 🚀 ডাটাবেজে হিট করার ঠিক আগ মুহূর্তে নিখুঁত নাম্বার টাইপ কনভার্সন নিশ্চিতকরণ
-    const newProduct = new Product({
-      title: String(body.title),
-      description: body.description || "তাজা ও সুস্বাদু পণ্য।",
-      price: Number(body.price) || 0,
-      stock: Number(body.stock) || 0, // 🚀 কড়া নাম্বারে কাস্টিং
-      category: body.category || "সবজি",
-      sellerId: finalSellerId,
-      district,
-      upazila,
-      imageUrl: body.imageUrl || ""
+    const newProduct = await Product.create({
+      title: body.title,
+      description: body.description,
+      price: Number(body.price),
+      image: body.image,
+      category: body.category,
+      stock: Number(body.stock) || 10,
+      district: body.district,
+      upazila: body.upazila,
+      union: body.union || "",
+      sellerId: currentSellerId, // আসল sellerId সেভ হচ্ছে
+      shopName: body.shopName || "উপজেলা ভেরিফায়েড স্টোর",
+      sellerName: body.sellerName || payload.name || "স্থানীয় বিক্রেতা",
     });
 
-    await newProduct.save();
-    return NextResponse.json({ success: true, product: newProduct });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "ডাটাবেজে সেভ করতে সমস্যা হয়েছে।" }, { status: 500 });
-  }
-}
-
-export async function PUT(req) {
-  try {
-    await connectDB();
-    const token = req.cookies.get('seller_token')?.value;
-    if (!token) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-
-    const body = await req.json();
-    const id = body.id || body._id;
-
-    if (!id) return NextResponse.json({ success: false, error: "প্রোডাক্ট আইডি প্রয়োজন।" }, { status: 400 });
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          title: String(body.title),
-          price: Number(body.price) || 0,
-          stock: Number(body.stock) || 0, // 🚀 এডিট করলেও সংখ্যা সেভ থাকবে
-          category: body.category,
-          imageUrl: body.imageUrl
-        }
-      },
-      { new: true }
+    return NextResponse.json(
+      { success: true, message: "পণ্য সফলভাবে আপলোড হয়েছে!", product: newProduct },
+      { status: 201 }
     );
-
-    return NextResponse.json({ success: true, product: updatedProduct });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "আপডেট করতে সমস্যা হয়েছে।" }, { status: 500 });
-  }
-}
-
-export async function DELETE(req) {
-  try {
-    await connectDB();
-    const token = req.cookies.get('seller_token')?.value;
-    if (!token) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-
-    if (!id) return NextResponse.json({ error: "প্রোডাক্ট আইডি প্রয়োজন।" }, { status: 400 });
-
-    await Product.findByIdAndDelete(id);
-    return NextResponse.json({ success: true, message: "প্রোডাক্ট সফলভাবে ডিলিট হয়েছে।" });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "ডিলিট করতে সমস্যা হয়েছে।" }, { status: 500 });
+    console.error("Product Upload Error:", error);
+    return NextResponse.json(
+      { error: "আপলোড ব্যর্থ হয়েছে: " + error.message },
+      { status: 500 }
+    );
   }
 }
