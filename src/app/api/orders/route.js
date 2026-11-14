@@ -154,6 +154,18 @@ export async function POST(req) {
       payment_method,
       items: verifiedItems,
     });
+        // অর্ডার হওয়া পণ্যগুলোর স্টক অটোমেটিক কমানো (সুপার-ফাস্ট bulkWrite)
+    const stockUpdates = verifiedItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.productId, stock: { $gt: 0 } },
+        update: { $inc: { stock: -item.qty } },
+      },
+    }));
+
+    if (stockUpdates.length > 0) {
+      await Product.bulkWrite(stockUpdates);
+    }
+
 
     return NextResponse.json(
       { success: true, message: "অর্ডার সফলভাবে সম্পন্ন হয়েছে!", order: newOrder },

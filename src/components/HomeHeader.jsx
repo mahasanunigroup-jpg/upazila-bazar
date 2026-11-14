@@ -45,6 +45,16 @@ export default function HomeHeader({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLocModalOpen, setIsLocModalOpen] = useState(false);
   const [tempLoc, setTempLoc] = useState(location);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+  fetch("/api/auth/me")
+    .then((res) => res.json())
+    .then((data) => {
+      if (data?.user) setCurrentUser(data.user);
+    })
+    .catch(() => {});
+}, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -92,13 +102,14 @@ export default function HomeHeader({
             <Link href="/" className="flex items-center gap-1.5 text-green-600 font-extrabold text-lg sm:text-xl shrink-0">
               <Store className="w-6 h-6" /> উপজেলা বাজার
             </Link>
-            <button
+                        <button
               onClick={() => { setTempLoc(location); setIsLocModalOpen(true); }}
-              className="flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-xs font-bold border border-green-200 max-w-48 sm:max-w-64"
+              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-800 px-2.5 py-1.5 rounded-full text-xs font-bold border border-green-200 max-w-[115px] sm:max-w-64"
             >
               <MapPin className="w-3.5 h-3.5 text-green-600 shrink-0" />
               <span className="truncate">{locationLabel}</span>
             </button>
+
           </div>
 
           <div className="hidden md:flex flex-1 max-w-sm relative">
@@ -112,16 +123,65 @@ export default function HomeHeader({
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <Link href="/seller/dashboard" className="text-xs sm:text-sm font-semibold text-gray-600 hover:text-green-600 hidden sm:block">
-              পণ্য যোগ করুন
-            </Link>
-            <button onClick={onOpenCart} className="bg-green-600 hover:bg-green-700 text-white px-3.5 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5">
-              <ShoppingCart className="w-4 h-4" />
-              <span>ব্যাগ</span>
-              <span className="bg-amber-400 text-gray-900 text-xs font-extrabold px-2 py-0.5 rounded-full">{totalCartItems}</span>
-            </button>
-          </div>
+                 <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+         {/* রোল অনুযায়ী ডাইনামিক ড্যাশবোর্ড বাটন */}
+         {currentUser?.role === "seller" && (
+           <>
+             <Link
+               href="/seller/orders"
+               className="text-xs sm:text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition"
+             >
+               অর্ডার ড্যাশবোর্ড
+             </Link>
+             <Link
+               href="/seller/dashboard"
+               className="text-xs sm:text-sm font-semibold text-gray-600 hover:text-green-600 hidden md:block"
+             >
+               পণ্য যোগ করুন
+             </Link>
+           </>
+         )}
+
+         {currentUser?.role === "rider" && (
+           <Link
+             href="/rider/dashboard"
+             className="text-xs sm:text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full border border-blue-200 transition"
+           >
+             রাইডার প্যানেল
+           </Link>
+         )}
+
+         {currentUser?.role === "customer" && (
+           <Link
+             href="/orders"
+             className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-green-600 hidden sm:block"
+           >
+             আমার অর্ডার
+           </Link>
+         )}
+
+         {!currentUser && (
+           <Link
+             href="/login"
+             className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-green-600 px-2"
+           >
+             লগইন
+           </Link>
+         )}
+
+         {/* ব্যাগ / কার্ট বাটন (একদম আগের মতোই) */}
+         <button
+           onClick={onOpenCart}
+           className="bg-green-600 hover:bg-green-700 text-white px-3.5 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer"
+         >
+           <ShoppingCart className="w-4 h-4" />
+           <span>ব্যাগ</span>
+           <span className="bg-amber-400 text-gray-900 text-xs font-extrabold px-2 py-0.5 rounded-full">
+             {totalCartItems}
+           </span>
+         </button>
+       </div>
+
         </div>
       </nav>
 

@@ -4,23 +4,30 @@ import { jwtVerify } from "jose";
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
 
-// ১. সব পণ্য দেখানোর ফাস্ট GET API
+// ১. সুপার-ফাস্ট ক্যাশড GET API
 export async function GET() {
   try {
     await connectDB();
     const products = await Product.find({})
       .select("title price image category stock district upazila union sellerId shopName sellerName")
       .sort({ createdAt: -1 })
+      .limit(60) // প্রথম লোডে সর্বোচ্চ ৬০টি লেটেস্ট পণ্য দ্রুত আনবে
       .lean();
 
-    return NextResponse.json(products, { status: 200 });
+    return NextResponse.json(products, {
+      status: 200,
+      headers: {
+        // ৬০ সেকেন্ড ক্যাশ থাকবে, এরপর ব্যাকগ্রাউন্ডে আপডেট হবে
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    });
   } catch (error) {
     console.error("Fetch Products Error:", error);
     return NextResponse.json({ message: "পণ্য লোড করতে সমস্যা হয়েছে" }, { status: 500 });
   }
 }
 
-// ২. নতুন পণ্য আপলোডের সিকিউর POST API (sellerId সহ)
+// ২. সিকিউর POST API (sellerId সহ)
 export async function POST(req) {
   try {
     const cookieStore = await cookies();
@@ -51,7 +58,7 @@ export async function POST(req) {
       district: body.district || "কিশোরগঞ্জ",
       upazila: body.upazila || "ভৈরব",
       union: body.union || "",
-      sellerId: currentSellerId, // আসল sellerId সেভ হচ্ছে
+      sellerId: currentSellerId,
       shopName: body.shopName || "উপজেলা ভেরিফায়েড স্টোর",
       sellerName: body.sellerName || payload.name || "স্থানীয় বিক্রেতা",
     });
@@ -62,9 +69,6 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("Create Product Error:", error);
-    return NextResponse.json(
-      { error: "আপলোড ব্যর্থ হয়েছে: " + error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "আপলোড ব্যর্থ হয়েছে: " + error.message }, { status: 500 });
   }
 }
