@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShoppingCart, User, Phone, MapPin, CreditCard, Loader2, Trash2, ArrowLeft } from "lucide-react";
+import { ShoppingCart, User, Phone, MapPin, Loader2, Trash2, ArrowLeft } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -11,25 +11,43 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState([]);
   const [formData, setFormData] = useState({ name: "", phone: "", address: "" });
 
-  // ব্রাউজারের localStorage থেকে আসল কার্ট ডাটা লোড করা
-   useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem("upazila_cart") || "[]");
-    setCartItems(savedCart);
+  // অ্যাডমিন সেটিংস থেকে ডাইনামিক ডেলিভারি চার্জ
+  const [rates, setRates] = useState({ inside: 40, outside: 60 });
+  const [deliveryZone, setDeliveryZone] = useState("inside"); // 'inside' = পৌরসভা, 'outside' = ইউনিয়ন
 
-    // কাস্টমারের সিলেক্ট করা ৪-স্তরের লোকেশন ঠিকানায় অটো-ফিল করা
-    const savedLoc = JSON.parse(localStorage.getItem("upazila_full_location") || "null");
-    if (savedLoc) {
-      const fullAddress = [savedLoc.moholla, savedLoc.union, savedLoc.upazila, savedLoc.district]
-        .filter(Boolean)
-        .join(", ");
-      if (fullAddress) {
-        setFormData((prev) => ({ ...prev, address: fullAddress }));
+   useEffect(() => {
+    const initCheckoutData = async () => {
+      const savedCart = JSON.parse(localStorage.getItem("upazila_cart") || "[]");
+      setCartItems(savedCart);
+
+      const savedLoc = JSON.parse(localStorage.getItem("upazila_full_location") || "null");
+      if (savedLoc) {
+        const fullAddress = [savedLoc.moholla, savedLoc.union, savedLoc.upazila, savedLoc.district]
+          .filter(Boolean)
+          .join(", ");
+        if (fullAddress) {
+          setFormData((prev) => ({ ...prev, address: fullAddress }));
+        }
+        if (savedLoc.union && !savedLoc.union.includes("পৌরসভা")) {
+          setDeliveryZone("outside");
+        }
       }
-    }
+
+      try {
+        const res = await fetch("/api/admin/settings");
+        const data = await res.json();
+        if (data?.settings) {
+          setRates({
+            inside: Number(data.settings.deliveryChargeInside ?? 40),
+            outside: Number(data.settings.deliveryChargeOutside ?? 60),
+          });
+        }
+      } catch {}
+    };
+
+    initCheckoutData();
   }, []);
 
-
-  // কার্ট থেকে কোনো আইটেম মুছে ফেলা
   const handleRemoveItem = (id) => {
     const updatedCart = cartItems.filter((item) => item._id !== id);
     setCartItems(updatedCart);
@@ -37,7 +55,8 @@ export default function CheckoutPage() {
   };
 
   const subTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const deliveryCharge = cartItems.length > 0 ? 60 : 0;
+  const activeRate = deliveryZone === "inside" ? rates.inside : rates.outside;
+  const deliveryCharge = cartItems.length > 0 ? activeRate : 0;
   const totalAmount = subTotal + deliveryCharge;
 
   const handleInputChange = (e) => {
@@ -50,7 +69,6 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      // localStorage থেকে সিলেক্ট করা জেলা ও উপজেলা বের করা
       const savedLoc = JSON.parse(localStorage.getItem("upazila_full_location") || "null");
 
       const orderPayload = {
@@ -59,6 +77,7 @@ export default function CheckoutPage() {
         customer_address: formData.address,
         district: savedLoc?.district || "কিশোরগঞ্জ",
         upazila: savedLoc?.upazila || "ভৈরব",
+        delivery_charge: deliveryCharge,
         payment_method: "Cash on Delivery",
         items: cartItems,
       };
@@ -72,9 +91,9 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        localStorage.removeItem("upazila_cart"); // কার্ট খালি করা
+        localStorage.removeItem("upazila_cart");
         alert(`ধন্যবাদ! আপনার অর্ডারটি সফলভাবে সম্পন্ন হয়েছে। অর্ডার আইডি: ${data.order.orderId}`);
-        router.push("/orders"); // কাস্টমারের অর্ডার হিস্ট্রি পেজে নিয়ে যাবে
+        router.push("/orders");
       } else {
         alert(data.error || "অর্ডার করতে সমস্যা হয়েছে!");
       }
@@ -85,7 +104,7 @@ export default function CheckoutPage() {
     }
   };
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto mb-6">
         <Link href="/" className="inline-flex items-center text-sm font-bold text-gray-600 hover:text-green-600">
@@ -128,6 +147,41 @@ export default function CheckoutPage() {
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 outline-none transition"
               />
             </div>
+
+            {/* ডেলিভারি এলাকা নির্বাচন (অ্যাডমিন সেটিংস থেকে চার্জ আসবে) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                ডেলিভারি এলাকা নির্বাচন করুন
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryZone("inside")}
+                  className={`p-3 rounded-xl border text-left transition ${
+                    deliveryZone === "inside"
+                      ? "border-green-600 bg-green-50 text-green-800 font-bold"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="text-xs">পৌরসভা এলাকা</div>
+                  <div className="text-sm mt-0.5">৳{rates.inside} টাকা</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeliveryZone("outside")}
+                  className={`p-3 rounded-xl border text-left transition ${
+                    deliveryZone === "outside"
+                      ? "border-green-600 bg-green-50 text-green-800 font-bold"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="text-xs">ইউনিয়ন / গ্রাম</div>
+                  <div className="text-sm mt-0.5">৳{rates.outside} টাকা</div>
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
                 <MapPin className="w-4 h-4 text-gray-400" /> সম্পূর্ণ ঠিকানা
@@ -191,20 +245,13 @@ export default function CheckoutPage() {
               <span>{subTotal} টাকা</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>ডেলিভারি চার্জ</span>
+              <span>ডেলিভারি চার্জ ({deliveryZone === "inside" ? "পৌরসভা" : "ইউনিয়ন"})</span>
               <span>{deliveryCharge} টাকা</span>
             </div>
-            <div className="border-t border-gray-200 pt-2.5 flex justify-between font-bold text-base text-gray-800">
-              <span>সর্বমোট</span>
+            <div className="flex justify-between text-base font-bold text-gray-800 pt-2.5 border-t border-gray-200">
+              <span>সর্বমোট পরিশোধযোগ্য</span>
               <span className="text-green-600">{totalAmount} টাকা</span>
             </div>
-          </div>
-
-          <div className="border border-green-100 bg-green-50/50 p-3.5 rounded-xl flex items-start gap-2.5 text-xs text-green-800">
-            <CreditCard className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-            <p>
-              <strong>পেমেন্ট পদ্ধতি:</strong> বর্তমানে শুধুমাত্র <strong>ক্যাশ অন ডেলিভারি</strong> সুবিধা উপলব্ধ রয়েছে।
-            </p>
           </div>
         </div>
       </div>

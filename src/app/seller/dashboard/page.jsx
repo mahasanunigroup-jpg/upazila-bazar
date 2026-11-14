@@ -7,6 +7,7 @@ import Link from "next/link";
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
 import Order from "@/models/Order";
+import Setting from "@/models/Setting";
 
 export const metadata = {
   title: "সেলার ড্যাশবোর্ড | উপজেলা বাজার",
@@ -38,11 +39,12 @@ async function DashboardContent() {
     ? new mongoose.Types.ObjectId(sellerId)
     : sellerId;
 
-  const [products, orders] = await Promise.all([
+  const [products, orders, globalSettings] = await Promise.all([
     Product.find({ sellerId: sellerObjectId }).sort({ createdAt: -1 }).lean(),
     Order.find({ "items.sellerId": sellerObjectId })
       .sort({ createdAt: -1 })
       .lean(),
+    Setting.collection.findOne({ key: "global_settings" }),
   ]);
 
   const totalProducts = products.length;
@@ -99,6 +101,10 @@ async function DashboardContent() {
     }
   });
 
+  const commissionPercent = Number(globalSettings?.commissionPercent ?? 5);
+  const commissionAmount = Math.round((totalRevenue * commissionPercent) / 100);
+  const netReceivable = totalRevenue - commissionAmount;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -120,15 +126,23 @@ async function DashboardContent() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-xs font-medium text-gray-500">মোট বিক্রি (ডেলিভারড)</p>
+        <Link
+          href="/seller/earnings"
+          className="bg-white p-5 rounded-xl shadow-sm border border-emerald-200 bg-emerald-50/20 hover:border-emerald-500 transition block"
+        >
+          <p className="text-xs font-medium text-gray-600">
+            আপনার নিট পাওনা (কমিশন বাদে)
+          </p>
           <p className="text-2xl font-bold text-emerald-600 mt-1">
-            ৳{totalRevenue.toLocaleString("bn-BD")}
+            ৳{netReceivable.toLocaleString("bn-BD")}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            সম্পন্ন অর্ডার: {deliveredOrdersCount} টি
+          <p className="text-[11px] text-gray-500 mt-1">
+            মোট বিক্রি: ৳{totalRevenue} • কমিশন ({commissionPercent}%): -৳{commissionAmount}
           </p>
-        </div>
+          <span className="text-xs text-emerald-700 font-medium mt-1.5 inline-block">
+            বিস্তারিত হিসাব দেখুন →
+          </span>
+        </Link>
 
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
           <p className="text-xs font-medium text-gray-500">চলমান / পেন্ডিং অর্ডার</p>
@@ -209,8 +223,6 @@ async function DashboardContent() {
           </div>
         </Link>
       </div>
-
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
