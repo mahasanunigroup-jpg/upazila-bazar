@@ -27,3 +27,7 @@ if (mongoose.models.User) {
 
 const User = mongoose.model("User", userSchema);
 export default User;
+
+
+userSchema.index({ role: 1, division: 1, district: 1, upazila: 1, union: 1 });
+userSchema.index({ createdAt: -1 });

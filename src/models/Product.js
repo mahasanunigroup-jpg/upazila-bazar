@@ -1,4 +1,5 @@
 
+
 import mongoose from "mongoose";
 
 const ProductSchema = new mongoose.Schema(
@@ -24,4 +25,10 @@ const ProductSchema = new mongoose.Schema(
 );
 ProductSchema.index({ sellerId: 1, upazila: 1 });
 
+ProductSchema.index({ createdAt: -1 });
+ProductSchema.index({ sellerId: 1, createdAt: -1 });
+ProductSchema.index({ category: 1, createdAt: -1 });
+
+
 export default mongoose.models.Product || mongoose.model("Product", ProductSchema);
+

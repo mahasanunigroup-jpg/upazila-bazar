@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 
 const OrderItemSchema = new mongoose.Schema({
@@ -66,5 +67,11 @@ const OrderSchema = new mongoose.Schema(
 OrderSchema.index({ "items.sellerId": 1, createdAt: -1 });
 OrderSchema.index({ riderId: 1, deliveryStatus: 1 });
 OrderSchema.index({ upazila: 1, status: 1 });
+OrderSchema.index({ createdAt: -1 });
+OrderSchema.index({ upazila: 1, union: 1, createdAt: -1 });
+OrderSchema.index({ status: 1, deliveryStatus: 1 });
+
 
 export default mongoose.models.Order || mongoose.model("Order", OrderSchema);
+
+

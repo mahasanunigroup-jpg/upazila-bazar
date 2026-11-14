@@ -1,3 +1,0 @@
-প্রজেক্ট: উপজেলা বাজার (Next.js App Router + MongoDB Mongoose + Cloudinary + Tailwind CSS)
-সম্পন্ন কাজ: হোম পেজ ও সব কম্পোনেন্ট, বাংলাদেশের লোকেশন সিস্টেম (src/data/bdLocations.js), সেলার ড্যাশবোর্ড থেকে Cloudinary-তে প্রোডাক্ট আপলোড, কার্ট, চেকআউট (src/app/checkout/page.jsx), লাইভ অর্ডার ট্র্যাকিং (src/app/orders/[id]/page.jsx), এবং অ্যাডমিন স্ট্যাটাস আপডেট (src/app/admin/orders/[id]/page.jsx)।
-আজকের কাজ: আমরা এখন ১. JWT লগইন-রেজিস্ট্রেশন ও middleware.js সিকিউরিটি, ২. seller/orders ও admin/orders ড্যাশবোর্ড, এবং ৩. rider/dashboard তৈরি করব। প্রথমে JWT অথেনটিকেশন দিয়ে শুরু করো।

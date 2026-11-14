@@ -19,20 +19,31 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
             }}
             className="w-full h-full object-cover"
           />
-          <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-gray-700 flex items-center justify-center shadow">
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-gray-700 flex items-center justify-center shadow"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="bg-green-50 text-green-700 text-xs font-bold px-3 py-1 rounded-full">{product.category}</span>
-            <span className="text-xs font-semibold text-gray-500">স্টক: {product.stock || 10} টি</span>
+            <span className="bg-green-50 text-green-700 text-xs font-bold px-3 py-1 rounded-full">
+              {product.category}
+            </span>
+            <span className="text-xs font-semibold text-gray-500">
+              স্টক: {product.stock || 10} টি
+            </span>
           </div>
 
           <div>
-            <h3 className="text-xl font-extrabold text-gray-800">{product.title}</h3>
-            <p className="text-2xl font-extrabold text-green-600 mt-1">৳ {product.price} টাকা</p>
+            <h3 className="text-xl font-extrabold text-gray-800">
+              {product.title}
+            </h3>
+            <p className="text-2xl font-extrabold text-green-600 mt-1">
+              ৳ {product.price} টাকা
+            </p>
           </div>
 
           <p className="text-sm text-gray-600">{product.description}</p>
@@ -46,6 +57,12 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
           >
             <ShoppingCart className="w-5 h-5" /> কার্টে যোগ করুন
           </button>
+          <a
+            href={`/product/${product._id}`}
+            className="block w-full text-center mt-2.5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition"
+          >
+            বিস্তারিত বিবরণ ও ক্রেতাদের রিভিউ দেখুন →
+          </a>
         </div>
       </div>
     </div>
