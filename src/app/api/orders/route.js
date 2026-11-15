@@ -27,7 +27,7 @@ async function getUserFromCookie() {
   }
 }
 
-// ১. কাস্টমারের অর্ডার লিস্ট (রাইডার ও সেলারের বিস্তারিত তথ্যসহ)
+// ১. কাস্টমারের অর্ডার লিস্ট (রাইডার, সেলার ও ফিডব্যাকের তথ্যসহ)
 export async function GET() {
   try {
     await connectDB();
@@ -64,6 +64,17 @@ export async function GET() {
             }
           : null,
         shops: shops.length > 0 ? shops : ["উপজেলা ভেরিফায়েড স্টোর"],
+        // নতুন যুক্ত করা হলো: রিলোড দিলেও যেন ফিডব্যাক থেকে যায়
+        feedback:
+          o.feedback && (o.feedback.isSubmitted || o.feedback.sellerRating || o.feedback.riderRating)
+            ? {
+                isSubmitted: true,
+                sellerRating: o.feedback.sellerRating,
+                sellerComment: o.feedback.sellerComment || "",
+                riderRating: o.feedback.riderRating,
+                riderComment: o.feedback.riderComment || "",
+              }
+            : null,
         items: (o.items || []).map((i) => ({
           name: i.name || i.title || "পণ্য",
           qty: `${i.qty || 1} টি`,
@@ -80,7 +91,7 @@ export async function GET() {
   }
 }
 
-// ২. চেকআউট থেকে নতুন অর্ডার তৈরির POST API
+// ২. চেকআউট থেকে নতুন অর্ডার তৈরির POST API (একদম আগের মতোই রাখা হয়েছে)
 export async function POST(req) {
   try {
     await connectDB();
@@ -154,7 +165,7 @@ export async function POST(req) {
       payment_method,
       items: verifiedItems,
     });
-        // অর্ডার হওয়া পণ্যগুলোর স্টক অটোমেটিক কমানো (সুপার-ফাস্ট bulkWrite)
+
     const stockUpdates = verifiedItems.map((item) => ({
       updateOne: {
         filter: { _id: item.productId, stock: { $gt: 0 } },
@@ -165,7 +176,6 @@ export async function POST(req) {
     if (stockUpdates.length > 0) {
       await Product.bulkWrite(stockUpdates);
     }
-
 
     return NextResponse.json(
       { success: true, message: "অর্ডার সফলভাবে সম্পন্ন হয়েছে!", order: newOrder },

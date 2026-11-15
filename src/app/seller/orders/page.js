@@ -46,7 +46,7 @@ async function getSellerDashboardData() {
       });
 
       const riderIdStr = order.riderId ? order.riderId.toString() : "";
-      
+
       // রাইডার অ্যাসাইন করা থাকলে স্ট্যাটাস সিঙ্ক রাখা
       let effectiveDeliveryStatus = order.deliveryStatus || "unassigned";
       if (riderIdStr && effectiveDeliveryStatus === "unassigned") {
@@ -74,6 +74,14 @@ async function getSellerDashboardData() {
         myItems: formattedItems,
         myTotal,
         orderPackingStatus,
+        // নতুন যুক্ত করা হলো: কাস্টমারের দেওয়া সেলার রেটিং ও মন্তব্য
+        feedback:
+          order.feedback && (order.feedback.isSubmitted || order.feedback.sellerRating)
+            ? {
+                sellerRating: Number(order.feedback.sellerRating),
+                sellerComment: order.feedback.sellerComment || "",
+              }
+            : null,
       };
     });
 

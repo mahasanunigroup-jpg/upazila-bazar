@@ -41,7 +41,7 @@ export default function ProductGridSection({
   const startIndex = (safePage - 1) * itemsPerPage;
   const currentProducts = filteredProducts.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   // পেজ পরিবর্তন করলে প্রোডাক্ট সেকশনের শুরুতে স্মুথ স্ক্রল করা
@@ -90,10 +90,10 @@ export default function ProductGridSection({
           {showWishlistOnly
             ? "আপনার পছন্দের তালিকা"
             : selectedShop !== "সব দোকান"
-            ? `${selectedShop}-এর পণ্যসমূহ`
-            : selectedCategory === "সব পণ্য"
-            ? "সাম্প্রতিক পণ্যসমূহ"
-            : `${selectedCategory} ক্যাটাগরি`}
+              ? `${selectedShop}-এর পণ্যসমূহ`
+              : selectedCategory === "সব পণ্য"
+                ? "সাম্প্রতিক পণ্যসমূহ"
+                : `${selectedCategory} ক্যাটাগরি`}
           <span className="text-xs font-normal text-gray-400">
             ({filteredProducts.length} টি)
           </span>
@@ -163,16 +163,12 @@ export default function ProductGridSection({
                   >
                     <div className="aspect-[4/3] sm:aspect-auto sm:h-44 w-full bg-gray-100 relative overflow-hidden">
                       <img
-                        src={
-                          product.image ||
-                          "https://placehold.co"
-                        }
+                        src={product.image || "https://placehold.co"}
                         alt={product.title}
                         loading="lazy"
                         onError={(e) => {
                           e.target.onerror = null;
-                          e.target.src =
-                            "https://placehold.co";
+                          e.target.src = "https://placehold.co";
                         }}
                         className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
                       />
@@ -198,8 +194,19 @@ export default function ProductGridSection({
                           <Store className="w-3.5 h-3.5 shrink-0" />
                           {product.shopName || "উপজেলা ভেরিফায়েড স্টোর"}
                         </span>
+                        {/* নতুন কোড */}
                         <span className="text-amber-500 font-bold flex items-center gap-0.5">
-                          <Star className="w-3.5 h-3.5 fill-amber-400" /> ৪.৮
+                          <Star className="w-3.5 h-3.5 fill-amber-400" />{" "}
+                          {Number(
+                            product.rating || product.averageRating || 0,
+                          ) > 0
+                            ? Number(
+                                product.rating || product.averageRating,
+                              ).toLocaleString("bn-BD", {
+                                minimumFractionDigits: 1,
+                                maximumFractionDigits: 1,
+                              })
+                            : "নতুন"}
                         </span>
                       </div>
                       <h3 className="font-bold text-gray-800 line-clamp-1 group-hover:text-green-600">
@@ -242,8 +249,8 @@ export default function ProductGridSection({
           {totalPages > 1 && (
             <div className="mt-8 bg-white p-4 rounded-2xl border border-gray-100 shadow-xs flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs sm:text-sm text-gray-500 font-medium">
-                পেজ <span className="font-bold text-gray-800">{safePage}</span> /{" "}
-                {totalPages} (মোট {filteredProducts.length} টি পণ্য)
+                পেজ <span className="font-bold text-gray-800">{safePage}</span>{" "}
+                / {totalPages} (মোট {filteredProducts.length} টি পণ্য)
               </p>
 
               <div className="flex items-center gap-1.5">
@@ -269,7 +276,7 @@ export default function ProductGridSection({
                       >
                         {pageNum}
                       </button>
-                    )
+                    ),
                   )}
                 </div>
 

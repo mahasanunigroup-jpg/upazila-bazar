@@ -9,6 +9,7 @@ import RiderOrdersView from "@/components/RiderOrdersView";
 async function getRiderOrders() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
+
   if (!token) redirect("/login");
 
   try {
@@ -20,10 +21,9 @@ async function getRiderOrders() {
 
     const rawOrders = await Order.find({ riderId: riderId })
       .sort({ updatedAt: -1 })
-      .limit(50)
+      .limit(100)
       .lean();
 
-    // শুধুমাত্র Plain JSON ডাটা রিটার্ন করা (যাতে ObjectId বা Date এরর না আসে)
     return rawOrders.map((o) => ({
       _id: o._id.toString(),
       orderId: o.orderId || o._id.toString().slice(-6).toUpperCase(),
@@ -33,11 +33,32 @@ async function getRiderOrders() {
       upazila: o.upazila || "",
       customer_address: o.customer_address || o.address || "",
       total_amount: Number(o.total_amount || o.totalAmount || 0),
+      // ডেলিভারি চার্জ থেকে রাইডারের আয় (ডাটাবেজে চার্জ না থাকলে ডিফল্ট ৫০ টাকা)
+      rider_earning: Number(
+        o.deliveryCharge || o.delivery_charge || o.shippingCost || 50
+      ),
       deliveryStatus: o.deliveryStatus || "assigned",
+      deliveryDateRaw: (o.updatedAt || o.createdAt || new Date()).toISOString(),
+      deliveryDateFormatted: new Date(
+        o.updatedAt || o.createdAt || new Date()
+      ).toLocaleDateString("bn-BD", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+      // কাস্টমারের দেওয়া রাইডার রেটিং ও মন্তব্য
+      feedback:
+        o.feedback && (o.feedback.isSubmitted || o.feedback.riderRating)
+          ? {
+              riderRating: Number(o.feedback.riderRating),
+              riderComment: o.feedback.riderComment || "",
+            }
+          : null,
       items: (o.items || []).map((i, idx) => ({
         _id: i._id ? i._id.toString() : `item_${idx}`,
         name: i.name || i.title || "পণ্য",
         qty: Number(i.qty || i.quantity || 1),
+        price: Number(i.price || 0),
         shopName: i.shopName || "উপজেলা স্টোর",
       })),
     }));
@@ -59,7 +80,7 @@ export default function RiderDashboardPage() {
         fallback={
           <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
             <p className="text-emerald-600 font-semibold animate-pulse">
-              ডেলিভারি তালিকা লোড হচ্ছে...
+              ডেলিভারি ও আয়ের তালিকা লোড হচ্ছে...
             </p>
           </div>
         }

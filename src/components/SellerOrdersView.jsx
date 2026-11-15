@@ -3,7 +3,13 @@
 import { useState, useMemo } from "react";
 import SellerStatusSelect from "./SellerStatusSelect";
 import SellerRiderSelect from "./SellerRiderSelect";
-import { ShoppingBag, CheckCircle2, Clock, Banknote, Calendar } from "lucide-react";
+import {
+  ShoppingBag,
+  CheckCircle2,
+  Clock,
+  Banknote,
+  Calendar,
+} from "lucide-react";
 
 export default function SellerOrdersView({ orders, riders }) {
   const [activeTab, setActiveTab] = useState("active"); // active, delivered, cancelled
@@ -60,28 +66,32 @@ export default function SellerOrdersView({ orders, riders }) {
 
   // আগের ৩টি ট্যাব ফিল্টার
   const activeOrders = orders.filter(
-    (o) => o.orderPackingStatus !== "cancelled" && o.deliveryStatus !== "delivered"
+    (o) =>
+      o.orderPackingStatus !== "cancelled" && o.deliveryStatus !== "delivered",
   );
   const deliveredOrders = orders.filter(
-    (o) => o.deliveryStatus === "delivered" && o.orderPackingStatus !== "cancelled"
+    (o) =>
+      o.deliveryStatus === "delivered" && o.orderPackingStatus !== "cancelled",
   );
   const cancelledOrders = orders.filter(
-    (o) => o.orderPackingStatus === "cancelled"
+    (o) => o.orderPackingStatus === "cancelled",
   );
 
   const displayedOrders =
     activeTab === "active"
       ? activeOrders
       : activeTab === "delivered"
-      ? deliveredOrders
-      : cancelledOrders;
+        ? deliveredOrders
+        : cancelledOrders;
 
   return (
     <>
       {/* হেডার ও সময় ফিল্টার বাটন (Day, Month, Year, All) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">সেলার অর্ডার ও ডেলিভারি ড্যাশবোর্ড</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            সেলার অর্ডার ও ডেলিভারি ড্যাশবোর্ড
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
             পণ্য প্যাক করুন, রাইডার অ্যাসাইন করুন এবং বিক্রির হিসাব দেখুন
           </p>
@@ -119,7 +129,9 @@ export default function SellerOrdersView({ orders, riders }) {
           </div>
           <div>
             <p className="text-xs font-medium text-gray-500">প্রাপ্ত অর্ডার</p>
-            <p className="text-xl font-bold text-gray-800">{stats.totalOrders} টি</p>
+            <p className="text-xl font-bold text-gray-800">
+              {stats.totalOrders} টি
+            </p>
           </div>
         </div>
 
@@ -128,8 +140,12 @@ export default function SellerOrdersView({ orders, riders }) {
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500">ডেলিভারি সম্পন্ন</p>
-            <p className="text-xl font-bold text-green-700">{stats.deliveredCount} টি</p>
+            <p className="text-xs font-medium text-gray-500">
+              ডেলিভারি সম্পন্ন
+            </p>
+            <p className="text-xl font-bold text-green-700">
+              {stats.deliveredCount} টি
+            </p>
           </div>
         </div>
 
@@ -139,7 +155,9 @@ export default function SellerOrdersView({ orders, riders }) {
           </div>
           <div>
             <p className="text-xs font-medium text-gray-500">পেন্ডিং / চলমান</p>
-            <p className="text-xl font-bold text-amber-700">{stats.pendingCount} টি</p>
+            <p className="text-xl font-bold text-amber-700">
+              {stats.pendingCount} টি
+            </p>
           </div>
         </div>
 
@@ -148,8 +166,12 @@ export default function SellerOrdersView({ orders, riders }) {
             <Banknote className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500">মোট বিক্রি (ডেলিভার্ড)</p>
-            <p className="text-xl font-bold text-emerald-700">৳{stats.totalSalesAmount}</p>
+            <p className="text-xs font-medium text-gray-500">
+              মোট বিক্রি (ডেলিভার্ড)
+            </p>
+            <p className="text-xl font-bold text-emerald-700">
+              ৳{stats.totalSalesAmount}
+            </p>
           </div>
         </div>
       </div>
@@ -210,7 +232,9 @@ export default function SellerOrdersView({ orders, riders }) {
               {/* টপ বার */}
               <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3 text-sm">
                 <div className="flex items-center gap-3">
-                  <span className="font-bold text-emerald-700">#{order.orderId}</span>
+                  <span className="font-bold text-emerald-700">
+                    #{order.orderId}
+                  </span>
                   <span className="text-gray-500">
                     {new Date(order.createdAt).toLocaleDateString("bn-BD", {
                       day: "numeric",
@@ -223,8 +247,8 @@ export default function SellerOrdersView({ orders, riders }) {
                       order.deliveryStatus === "delivered"
                         ? "bg-green-100 text-green-800"
                         : order.deliveryStatus === "assigned"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-yellow-100 text-yellow-800"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-yellow-100 text-yellow-800"
                     }`}
                   >
                     ডেলিভারি: {order.deliveryStatus}
@@ -252,16 +276,34 @@ export default function SellerOrdersView({ orders, riders }) {
                   <span className="font-bold text-gray-800 pl-1">
                     বিল: ৳{order.myTotal}
                   </span>
+
+                  {/* যেখানে <SellerRiderSelect ... /> আছে তার প্যারেন্ট </div> শেষ হওয়ার ঠিক নিচে */}
+                                {/* কার্ডের একদম নিচে ফুল-উইডথ রেটিং ফুটার বার */}
+              {order.feedback && (
+                <div className="bg-amber-50/90 border-t border-amber-200 px-5 py-3 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-amber-800 flex items-center gap-1.5">
+                    ⭐ কাস্টমার রেটিং: {order.feedback.sellerRating} / 5
+                  </span>
+                  {order.feedback.sellerComment && (
+                    <span className="text-gray-700 italic">
+                      "{order.feedback.sellerComment}"
+                    </span>
+                  )}
+                </div>
+              )}
+
                 </div>
               </div>
 
               {/* ক্রেতার ঠিকানা */}
               <div className="px-5 py-3 bg-emerald-50/30 border-b border-gray-100 text-sm flex flex-wrap gap-x-6 gap-y-1 text-gray-700">
                 <p>
-                  <span className="font-semibold">ক্রেতা:</span> {order.customer_name}
+                  <span className="font-semibold">ক্রেতা:</span>{" "}
+                  {order.customer_name}
                 </p>
                 <p>
-                  <span className="font-semibold">ফোন:</span> {order.customer_phone}
+                  <span className="font-semibold">ফোন:</span>{" "}
+                  {order.customer_phone}
                 </p>
                 <p>
                   <span className="font-semibold">এলাকা:</span> {order.upazila}
@@ -283,7 +325,9 @@ export default function SellerOrdersView({ orders, riders }) {
                   <tbody className="divide-y divide-gray-100 text-sm">
                     {order.myItems.map((item) => (
                       <tr key={item._id}>
-                        <td className="py-2.5 font-medium text-gray-800">{item.name}</td>
+                        <td className="py-2.5 font-medium text-gray-800">
+                          {item.name}
+                        </td>
                         <td className="py-2.5 text-gray-600">{item.qty} টি</td>
                         <td className="py-2.5 font-semibold text-gray-800 text-right">
                           ৳{item.price * item.qty}

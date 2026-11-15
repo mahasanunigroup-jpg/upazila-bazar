@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import mongoose from "mongoose";
@@ -18,6 +19,7 @@ export async function GET(req) {
     }
 
     await connectDB();
+
     const reviews = await Review.find({
       productId: new mongoose.Types.ObjectId(productId),
     })
@@ -34,6 +36,12 @@ export async function GET(req) {
             ).toFixed(1)
           )
         : 0;
+
+    // এখানে গড় রেটিং হিসাব হওয়ার পর Product কালেকশনে সেভ হবে
+    await Product.collection.updateOne(
+      { _id: new mongoose.Types.ObjectId(productId) },
+      { $set: { rating: averageRating, numReviews: totalReviews } }
+    );
 
     return NextResponse.json({
       reviews: reviews.map((r) => ({
@@ -98,7 +106,6 @@ export async function POST(req) {
     const prodObjId = new mongoose.Types.ObjectId(productId);
     const userObjId = new mongoose.Types.ObjectId(userId);
 
-    // ইউজার এই পণ্যটি ডেলিভারি পেয়েছে কি না তা যাচাই (Verified Buyer ব্যাজের জন্য)
     const hasDeliveredOrder = await Order.exists({
       customerId: userObjId,
       "items.productId": prodObjId,
@@ -118,7 +125,6 @@ export async function POST(req) {
       { upsert: true, new: true }
     );
 
-    // পণ্যের গড় রেটিং আপডেট করে Product মডেলে সেভ রাখা
     const allReviews = await Review.find({ productId: prodObjId })
       .select("rating")
       .lean();
@@ -133,6 +139,8 @@ export async function POST(req) {
       { _id: prodObjId },
       { $set: { rating: avgRating, numReviews: totalReviews } }
     );
+
+    revalidatePath("/");
 
     return NextResponse.json({
       message: "আপনার মূল্যবান রিভিউটি সংরক্ষিত হয়েছে!",
