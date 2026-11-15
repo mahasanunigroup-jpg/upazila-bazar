@@ -40,15 +40,15 @@ export default function AdminUserTable({
       roleFilter === "all"
         ? true
         : roleFilter === "admins"
-        ? [
-            "admin",
-            "super_admin",
-            "division_admin",
-            "district_admin",
-            "upazila_admin",
-            "union_admin",
-          ].includes(u.role)
-        : u.role === roleFilter;
+          ? [
+              "admin",
+              "super_admin",
+              "division_admin",
+              "district_admin",
+              "upazila_admin",
+              "union_admin",
+            ].includes(u.role)
+          : u.role === roleFilter;
 
     const matchesSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -72,7 +72,7 @@ export default function AdminUserTable({
       if (!res.ok) throw new Error(data.message);
 
       setUsers((prev) =>
-        prev.map((u) => (u._id === userId ? { ...u, ...data.user } : u))
+        prev.map((u) => (u._id === userId ? { ...u, ...data.user } : u)),
       );
       router.refresh();
     } catch (err) {
@@ -170,7 +170,12 @@ export default function AdminUserTable({
               return (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="py-3 px-4">
-                    <p className="font-semibold text-gray-800">{user.name}</p>
+                    <p className="font-semibold text-gray-800">
+                      {user.name}
+                      <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded border">
+                        {user.customId}
+                      </span>
+                    </p>
                     <p className="text-xs text-gray-500">
                       {user.phone || user.email}
                       {user.phone && user.email ? ` (${user.email})` : ""}
@@ -208,7 +213,8 @@ export default function AdminUserTable({
                       <span className="px-2.5 py-0.5 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
                         ব্লকড (Blocked)
                       </span>
-                    ) : user.isApproved === false || user.status === "pending" ? (
+                    ) : user.isApproved === false ||
+                      user.status === "pending" ? (
                       <span className="px-2.5 py-0.5 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
                         পেন্ডিং অ্যাপ্রুভাল
                       </span>
@@ -221,13 +227,18 @@ export default function AdminUserTable({
 
                   <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
                     {isSelf ? (
-                      <span className="text-xs text-gray-400 italic">নিজ অ্যাকাউন্ট</span>
+                      <span className="text-xs text-gray-400 italic">
+                        নিজ অ্যাকাউন্ট
+                      </span>
                     ) : (
                       <>
-                        {(user.isApproved === false || user.status === "pending") && (
+                        {(user.isApproved === false ||
+                          user.status === "pending") && (
                           <button
                             disabled={loadingId === user._id}
-                            onClick={() => handleAction(user._id, { action: "approve" })}
+                            onClick={() =>
+                              handleAction(user._id, { action: "approve" })
+                            }
                             className="px-3 py-1 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 rounded-md"
                           >
                             Approve
@@ -237,7 +248,9 @@ export default function AdminUserTable({
                         {isBlocked ? (
                           <button
                             disabled={loadingId === user._id}
-                            onClick={() => handleAction(user._id, { action: "unblock" })}
+                            onClick={() =>
+                              handleAction(user._id, { action: "unblock" })
+                            }
                             className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md"
                           >
                             Unblock
@@ -245,7 +258,9 @@ export default function AdminUserTable({
                         ) : (
                           <button
                             disabled={loadingId === user._id}
-                            onClick={() => handleAction(user._id, { action: "block" })}
+                            onClick={() =>
+                              handleAction(user._id, { action: "block" })
+                            }
                             className="px-3 py-1 text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 rounded-md"
                           >
                             Block

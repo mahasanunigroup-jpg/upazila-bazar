@@ -6,6 +6,7 @@ import User from "@/models/User";
 import { verifyAdmin } from "@/lib/adminAuth";
 import { buildLocationScope, MANAGEABLE_ROLES } from "@/lib/adminScope";
 import AdminUserTable from "@/components/admin/AdminUserTable";
+import { getDisplayUserId } from "@/lib/generateUserId";
 
 export const metadata = {
   title: "অ্যাডমিন, ইউজার ও সেলার কন্ট্রোল | উপজেলা বাজার",
@@ -37,6 +38,9 @@ async function UsersDataSection() {
     .lean();
 
   const users = rawUsers.map((u) => ({
+
+    customId: getDisplayUserId(u),
+
     _id: u._id.toString(),
     name: u.name || "নাম নেই",
     email: u.email || "",
@@ -46,6 +50,8 @@ async function UsersDataSection() {
     district: u.district || "",
     upazila: u.upazila || "",
     union: u.union || "",
+    address: u.address || "",
+    biodata: u.biodata || {},
     isApproved: u.isApproved ?? true,
     isBlocked: u.isBlocked ?? false,
     status: u.status || (u.isBlocked ? "blocked" : "active"),

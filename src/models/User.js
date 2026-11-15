@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema(
       ],
       default: "customer",
     },
+    customId: { type: String, unique: true, sparse: true },
     shopName: { type: String, default: "" },
     division: { type: String, default: "" },
     district: { type: String, default: "" },
@@ -28,19 +29,27 @@ const userSchema = new mongoose.Schema(
     union: { type: String, default: "" },
     address: { type: String, default: "" },
     // অ্যাডমিন ও রাইডারের বিস্তারিত বায়োডাটা
+    // অ্যাডমিন ও রাইডারের পূর্ণাঙ্গ বায়োডাটা ও ডকুমেন্টস
     biodata: {
-      fatherName: { type: String, default: "" },
-      nidNumber: { type: String, default: "" },
-      dateOfBirth: { type: String, default: "" },
-      bloodGroup: { type: String, default: "" },
-      emergencyPhone: { type: String, default: "" },
-      vehicleType: { type: String, default: "" },
+      avatar: { type: String, default: "" }, // ব্যক্তির পাসপোর্ট সাইজ ছবি
+      fatherName: { type: String, default: "" }, // পিতার নাম
+      motherName: { type: String, default: "" }, // মাতার নাম
+      nidNumber: { type: String, default: "" }, // NID ভ্যালিড নম্বর
+      nidFrontImage: { type: String, default: "" }, // NID সামনের ছবি (Front)
+      nidBackImage: { type: String, default: "" }, // NID পেছনের ছবি (Back)
+      dateOfBirth: { type: String, default: "" }, // জন্ম তারিখ
+      bloodGroup: { type: String, default: "" }, // রক্তের গ্রুপ
+      emergencyPhone: { type: String, default: "" }, // জরুরি ফোন নম্বর
+      permanentAddress: { type: String, default: "" }, // স্থায়ী ঠিকানা
+      presentAddress: { type: String, default: "" }, // বর্তমান ঠিকানা
+      vehicleType: { type: String, default: "" }, // রাইডারের বাহনের ধরন
     },
+
     isApproved: { type: Boolean, default: true },
     isBlocked: { type: Boolean, default: false },
     status: { type: String, default: "active" },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.index({ role: 1, division: 1, district: 1, upazila: 1, union: 1 });
