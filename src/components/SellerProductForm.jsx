@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { BD_LOCATIONS } from "@/data/bdLocations";
 import { PlusCircle, Image, Loader2, CheckCircle, Store } from "lucide-react";
+import { optimizeImageFile } from "@/lib/optimizeImage";
+
 
 export default function SellerProductForm() {
   const [loading, setLoading] = useState(false);
@@ -47,7 +49,7 @@ export default function SellerProductForm() {
 
     setLoading(true);
     setSuccess("");
-
+    const optimizedImage = await optimizeImageFile(imageFile, 1200, 0.92);
     const data = new FormData();
     Object.keys(formData).forEach((key) => {
       data.append(key, formData[key]);
