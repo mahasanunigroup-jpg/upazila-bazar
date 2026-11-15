@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { verifyAdmin } from "@/lib/adminAuth";
+import { MANAGEABLE_ROLES } from "@/lib/adminScope";
 
 export async function PATCH(req, { params }) {
   try {
@@ -32,6 +33,17 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: "ইউজার পাওয়া যায়নি" }, { status: 404 });
     }
 
+    // ৩. হায়ারার্কি প্রোটেকশন: বর্তমান অ্যাডমিন কেবল তার অধীনস্থ রোলগুলোই নিয়ন্ত্রণ করতে পারবেন
+    const isSuper = admin.role === "admin" || admin.role === "super_admin";
+    const allowedRoles = MANAGEABLE_ROLES[admin.role] || [];
+
+    if (!isSuper && !allowedRoles.includes(targetUser.role) && targetUser.role !== "customer") {
+      return NextResponse.json(
+        { message: "আপনি উপরের বা সমপর্যায়ের কোনো অ্যাডমিনকে পরিবর্তন করতে পারবেন না!" },
+        { status: 403 }
+      );
+    }
+
     if (action === "approve") {
       targetUser.isApproved = true;
       targetUser.isVerified = true;
@@ -45,11 +57,11 @@ export async function PATCH(req, { params }) {
       targetUser.status = "approved";
     } else if (
       action === "changeRole" &&
-      ["customer", "seller", "rider", "admin"].includes(role)
+      (isSuper || allowedRoles.includes(role) || role === "customer")
     ) {
       targetUser.role = role;
     } else {
-      return NextResponse.json({ message: "অবৈধ অনুরোধ" }, { status: 400 });
+      return NextResponse.json({ message: "অবৈধ অনুরোধ বা অনুমতি নেই" }, { status: 400 });
     }
 
     await targetUser.save();

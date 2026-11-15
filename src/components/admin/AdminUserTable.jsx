@@ -2,20 +2,61 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 
-export default function AdminUserTable({ initialUsers, currentAdminId }) {
+// বাটনে ক্লিক করার পরই কেবল ফর্ম ও লোকেশন ডাটা লোড হবে (সুপার-ফাস্ট লোডিং)
+const CreateAdminForm = dynamic(() => import("./CreateAdminForm"), {
+  loading: () => <p className="text-xs text-emerald-600">ফর্ম লোড হচ্ছে...</p>,
+});
+const AdminDirectoryBrowser = dynamic(() => import("./AdminDirectoryBrowser"));
+
+const ROLE_DISPLAY = {
+  customer: "Customer",
+  seller: "Seller",
+  rider: "Rider",
+  union_admin: "Union Admin",
+  upazila_admin: "Upazila Admin",
+  district_admin: "Zila (District) Admin",
+  division_admin: "Division Admin",
+  super_admin: "Super Admin",
+  admin: "Super Admin",
+};
+
+export default function AdminUserTable({
+  initialUsers,
+  currentAdminId,
+  currentAdmin = {},
+  allowedRoles = ["seller", "rider"],
+}) {
   const router = useRouter();
   const [users, setUsers] = useState(initialUsers || []);
   const [roleFilter, setRoleFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [loadingId, setLoadingId] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const filteredUsers = users.filter((u) => {
-    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    const matchesRole =
+      roleFilter === "all"
+        ? true
+        : roleFilter === "admins"
+        ? [
+            "admin",
+            "super_admin",
+            "division_admin",
+            "district_admin",
+            "upazila_admin",
+            "union_admin",
+          ].includes(u.role)
+        : u.role === roleFilter;
+
     const matchesSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.phone.includes(search) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.upazila || "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.district || "").toLowerCase().includes(search.toLowerCase());
+
     return matchesRole && matchesSearch;
   });
 
@@ -42,16 +83,42 @@ export default function AdminUserTable({ initialUsers, currentAdminId }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition cursor-pointer"
+        >
+          {showCreateForm
+            ? "✕ ফর্ম বন্ধ করুন"
+            : "+ নতুন আঞ্চলিক অ্যাডমিন / স্টাফ তৈরি করুন"}
+        </button>
+      </div>
+
+      {showCreateForm && (
+        <CreateAdminForm
+          currentAdmin={currentAdmin}
+          allowedRoles={allowedRoles}
+          onClose={() => setShowCreateForm(false)}
+          onCreated={(newUser) => {
+            setUsers((prev) => [newUser, ...prev]);
+            setShowCreateForm(false);
+            router.refresh();
+          }}
+        />
+      )}
+
+      <AdminDirectoryBrowser users={users} currentAdmin={currentAdmin} />
+
       {/* ফিল্টার ও সার্চ বার */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between">
         <div className="flex gap-2 flex-wrap">
           {[
             { key: "all", label: "সবাই" },
+            { key: "admins", label: "সকল অ্যাডমিন" },
             { key: "seller", label: "সেলার" },
             { key: "rider", label: "রাইডার" },
             { key: "customer", label: "কাস্টমার" },
-            { key: "admin", label: "অ্যাডমিন" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -69,7 +136,7 @@ export default function AdminUserTable({ initialUsers, currentAdminId }) {
 
         <input
           type="text"
-          placeholder="নাম, ফোন বা ইমেইল খুঁজুন..."
+          placeholder="নাম, ফোন বা এলাকা খুঁজুন..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="px-3.5 py-1.5 text-sm border rounded-lg bg-white w-full sm:w-64 outline-none focus:ring-2 focus:ring-emerald-500"
@@ -81,7 +148,7 @@ export default function AdminUserTable({ initialUsers, currentAdminId }) {
         <table className="w-full text-left border-collapse text-sm">
           <thead>
             <tr className="bg-gray-50 border-b text-gray-600">
-              <th className="py-3 px-4">নাম ও যোগাযোগ</th>
+              <th className="py-3 px-4">নাম, যোগাযোগ ও এলাকা</th>
               <th className="py-3 px-4">রোল (Role)</th>
               <th className="py-3 px-4">অবস্থা</th>
               <th className="py-3 px-4 text-right">কন্ট্রোল অ্যাকশন</th>
@@ -91,13 +158,23 @@ export default function AdminUserTable({ initialUsers, currentAdminId }) {
             {filteredUsers.map((user) => {
               const isSelf = user._id === currentAdminId;
               const isBlocked = user.isBlocked || user.status === "blocked";
+              const areaText = [
+                user.union,
+                user.upazila,
+                user.district,
+                user.division,
+              ]
+                .filter(Boolean)
+                .join(", ");
 
               return (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <p className="font-semibold text-gray-800">{user.name}</p>
                     <p className="text-xs text-gray-500">
-                      {user.phone || user.email} {user.upazila ? `• ${user.upazila}` : ""}
+                      {user.phone || user.email}
+                      {user.phone && user.email ? ` (${user.email})` : ""}
+                      {areaText ? ` • 📍 ${areaText}` : ""}
                     </p>
                   </td>
 
@@ -113,10 +190,16 @@ export default function AdminUserTable({ initialUsers, currentAdminId }) {
                       }
                       className="px-2.5 py-1 text-xs font-medium border rounded-md bg-white disabled:opacity-60"
                     >
-                      <option value="customer">Customer</option>
-                      <option value="seller">Seller</option>
-                      <option value="rider">Rider</option>
-                      <option value="admin">Admin</option>
+                      <option value={user.role}>
+                        {ROLE_DISPLAY[user.role] || user.role}
+                      </option>
+                      {allowedRoles
+                        .filter((r) => r !== user.role)
+                        .map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_DISPLAY[r] || r}
+                          </option>
+                        ))}
                     </select>
                   </td>
 

@@ -1,20 +1,37 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { verifyAdmin } from "@/lib/adminAuth";
+import { buildLocationScope, MANAGEABLE_ROLES } from "@/lib/adminScope";
 import AdminUserTable from "@/components/admin/AdminUserTable";
 
 export const metadata = {
-  title: "ইউজার ও সেলার কন্ট্রোল | অ্যাডমিন প্যানেল",
+  title: "অ্যাডমিন, ইউজার ও সেলার কন্ট্রোল | উপজেলা বাজার",
 };
 
 async function UsersDataSection() {
   await connection();
   const admin = await verifyAdmin();
+  if (!admin) redirect("/unauthorized");
+
   await connectDB();
 
-  const rawUsers = await User.find({})
+  // লগইন করা অ্যাডমিনের এলাকা ও অধীনস্থ রোল অনুযায়ী ফিল্টার
+  const locationFilter = buildLocationScope(admin);
+  const allowedRoles = MANAGEABLE_ROLES[admin.role] || [];
+  const isSuper = admin.role === "admin" || admin.role === "super_admin";
+
+  // Super Admin সবাইকে দেখবেন, আর আঞ্চলিক অ্যাডমিনরা কেবল নিজ এলাকার অধীনস্থ রোলগুলো দেখবেন
+  const query = isSuper
+    ? {}
+    : {
+        ...locationFilter,
+        role: { $in: [...allowedRoles, "customer"] },
+      };
+
+  const rawUsers = await User.find(query)
     .select("-password")
     .sort({ createdAt: -1 })
     .lean();
@@ -25,7 +42,10 @@ async function UsersDataSection() {
     email: u.email || "",
     phone: u.phone || "",
     role: u.role || "customer",
+    division: u.division || "",
+    district: u.district || "",
     upazila: u.upazila || "",
+    union: u.union || "",
     isApproved: u.isApproved ?? true,
     isBlocked: u.isBlocked ?? false,
     status: u.status || (u.isBlocked ? "blocked" : "active"),
@@ -35,17 +55,22 @@ async function UsersDataSection() {
     <>
       <div>
         <h1 className="text-2xl font-bold text-gray-800">
-          ইউজার, সেলার ও রাইডার নিয়ন্ত্রণ
+          অ্যাডমিন, সেলার ও রাইডার নিয়ন্ত্রণ
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          মোট নিবন্ধিত অ্যাকাউন্ট:{" "}
+          আপনার আওতাধীন মোট নিবন্ধিত অ্যাকাউন্ট:{" "}
           <span className="font-semibold text-emerald-600">
             {users.length} টি
           </span>
         </p>
       </div>
 
-      <AdminUserTable initialUsers={users} currentAdminId={admin?._id} />
+      <AdminUserTable
+        initialUsers={users}
+        currentAdminId={admin._id}
+        currentAdmin={admin}
+        allowedRoles={allowedRoles}
+      />
     </>
   );
 }
