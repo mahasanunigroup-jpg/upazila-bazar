@@ -2,8 +2,10 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Expense from "@/models/Expense";
+import Notification from "@/models/Notification";
 import { verifyAdmin } from "@/lib/adminAuth";
 
+// ১. নতুন আয় বা ব্যয় / স্যালারি এন্ট্রি
 export async function POST(req) {
   try {
     const admin = await verifyAdmin();
@@ -19,8 +21,6 @@ export async function POST(req) {
     }
 
     await connectDB();
-
-    // 🔒 শুধুমাত্র মূল সুপার অ্যাডমিন হলে approved, বাকি সব স্তরের অ্যাডমিনের জন্য বাধ্যতামূলক pending
     const isMainSuperAdmin = admin.role === "super_admin" || admin.role === "admin";
     const initialStatus = isMainSuperAdmin ? "approved" : "pending";
 
@@ -42,6 +42,15 @@ export async function POST(req) {
       status: initialStatus,
     });
 
+    if (!isMainSuperAdmin) {
+      await Notification.create({
+        recipientRole: "super_admin",
+        title: "💰 নতুন স্যালারি / ব্যয় অনুমোদনের অনুরোধ",
+        message: `${admin.name} (${admin.upazila || admin.district || admin.division || "আঞ্চলিক"}) ৳${amount} টাকার "${title}" জমা দিয়েছেন।`,
+        link: "/admin/finance",
+      });
+    }
+
     return NextResponse.json(
       {
         message:
@@ -53,18 +62,18 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Transaction Save Error:", error);
     return NextResponse.json({ message: "সার্ভার এরর" }, { status: 500 });
   }
 }
 
+// ২. সুপার অ্যাডমিনের Approve, Edit এবং Cancel (Delete) কন্ট্রোল
 export async function PATCH(req) {
   try {
     const admin = await verifyAdmin();
     const isSuper = admin?.role === "super_admin" || admin?.role === "admin";
     if (!isSuper) {
       return NextResponse.json(
-        { message: "শুধুমাত্র সুপার অ্যাডমিন অনুমোদন বা এডিট করতে পারবেন" },
+        { message: "শুধুমাত্র সুপার অ্যাডমিন অনুমোদন বা বাতিল করতে পারবেন" },
         { status: 403 }
       );
     }
@@ -73,6 +82,23 @@ export async function PATCH(req) {
     if (!expenseId) return NextResponse.json({ message: "আইডি প্রয়োজন" }, { status: 400 });
 
     await connectDB();
+
+    // 🗑️ বাতিল (rejected) করলে ডাটাবেস থেকে স্থায়ীভাবে ডিলিট করে দেবে
+    if (status === "rejected") {
+      const deleted = await Expense.findByIdAndDelete(expenseId).lean();
+      if (deleted?.createdBy) {
+        await Notification.create({
+          recipientId: deleted.createdBy,
+          recipientRole: deleted.creatorRole || "division_admin",
+          title: "❌ আপনার স্যালারি / ব্যয় বাতিল করা হয়েছে",
+          message: `সুপার অ্যাডমিন আপনার "${deleted.title}" (৳${deleted.amount}) লেনদেনটি বাতিল ও তালিকা থেকে মুছে ফেলেছেন।`,
+          link: "/admin/finance",
+        });
+      }
+      return NextResponse.json({ message: "লেনদেনটি বাতিল ও মুছে ফেলা হয়েছে!", deleted: true });
+    }
+
+    // ✅ অনুমোদন বা এডিট করলে আপডেট হবে
     const updateFields = {};
     if (status) updateFields.status = status;
     if (amount !== undefined && Number(amount) > 0) updateFields.amount = Number(amount);
@@ -85,6 +111,16 @@ export async function PATCH(req) {
       { $set: updateFields },
       { new: true }
     ).lean();
+
+    if (updated?.createdBy && status === "approved") {
+      await Notification.create({
+        recipientId: updated.createdBy,
+        recipientRole: updated.creatorRole || "division_admin",
+        title: "✅ আপনার স্যালারি / ব্যয় অনুমোদিত হয়েছে",
+        message: `সুপার অ্যাডমিন আপনার "${updated.title}" (৳${updated.amount}) লেনদেনটি অনুমোদন (Approved) করেছেন। এখন প্রিন্ট করতে পারবেন।`,
+        link: "/admin/finance",
+      });
+    }
 
     return NextResponse.json({
       message: "সফলভাবে আপডেট হয়েছে!",

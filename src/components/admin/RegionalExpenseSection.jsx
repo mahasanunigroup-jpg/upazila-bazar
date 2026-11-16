@@ -14,6 +14,7 @@ const ROLE_NAMES = {
 export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
   const router = useRouter();
   const [expenses, setExpenses] = useState(initialExpenses || []);
+  const [activeTab, setActiveTab] = useState('active');
   const [type, setType] = useState('expense');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -35,6 +36,9 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
+      if (data.expense) {
+        setExpenses((prev) => [data.expense, ...prev]);
+      }
       setTitle('');
       setAmount('');
       setPartyName('');
@@ -50,6 +54,13 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
   };
 
   const handleStatusChange = async (expenseId, status) => {
+    if (
+      status === 'rejected' &&
+      !confirm('আপনি কি নিশ্চিতভাবে এটি বাতিলকৃত তালিকায় পাঠাতে চান?')
+    ) {
+      return;
+    }
+
     try {
       const res = await fetch('/api/admin/expenses', {
         method: 'PATCH',
@@ -144,6 +155,10 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
     `);
     printWindow.document.close();
   };
+
+  const activeList = expenses.filter((ex) => ex.status !== 'rejected');
+  const rejectedList = expenses.filter((ex) => ex.status === 'rejected');
+  const displayedExpenses = activeTab === 'active' ? activeList : rejectedList;
   return (
     <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-100 space-y-5">
       <div>
@@ -200,10 +215,10 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-xs bg-gray-100 rounded-lg">
+              <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-xs bg-gray-100 rounded-lg cursor-pointer">
                 বাতিল
               </button>
-              <button type="submit" className="px-4 py-1.5 text-xs bg-emerald-600 text-white font-bold rounded-lg">
+              <button type="submit" className="px-4 py-1.5 text-xs bg-emerald-600 text-white font-bold rounded-lg cursor-pointer">
                 সেভ করুন
               </button>
             </div>
@@ -277,14 +292,41 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
           className="sm:col-span-2 lg:col-span-6 px-3 py-2 text-xs border rounded-lg bg-white"
         />
       </form>
-      {/* 📱 মোবাইল ভিউ: স্ক্রলবার ছাড়াই সুন্দর কার্ড ডিজাইন */}
+
+      {/* ট্যাব বাটন: সক্রিয় তালিকা বনাম বাতিলকৃত তালিকা */}
+      <div className="flex items-center gap-2 border-b pb-3 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveTab('active')}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeTab === 'active'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          ✅ সক্রিয় ও পেন্ডিং ({activeList.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('rejected')}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeTab === 'rejected'
+              ? 'bg-red-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          ❌ বাতিলকৃত তালিকা ({rejectedList.length})
+        </button>
+      </div>
+      {/* 📱 মোবাইল ভিউ */}
       <div className="grid grid-cols-1 gap-3 md:hidden">
-        {expenses.length === 0 ? (
+        {displayedExpenses.length === 0 ? (
           <p className="py-6 text-center text-xs text-gray-400">
-            এখনো কোনো আয়-ব্যয়ের লেনদেন রেকর্ড করা হয়নি
+            এই তালিকায় কোনো রেকর্ড নেই
           </p>
         ) : (
-          expenses.map((ex) => {
+          displayedExpenses.map((ex) => {
             const areaText = [ex.union, ex.upazila, ex.district, ex.division]
               .filter(Boolean)
               .join(', ');
@@ -293,19 +335,12 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
               <div key={ex._id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/40 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        ex.type === 'income'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
-                    >
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${ex.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                       {ex.type === 'income' ? 'আয়' : 'ব্যয়'}
                     </span>
                     <h4 className="font-bold text-gray-800 text-sm mt-1">{ex.title}</h4>
                     {ex.note && <p className="text-xs text-gray-500">নোট: {ex.note}</p>}
                   </div>
-
                   <p className={`text-base font-bold shrink-0 ${ex.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
                     {ex.type === 'income' ? '+' : '-'} ৳{Number(ex.amount).toLocaleString('bn-BD')}
                   </p>
@@ -326,52 +361,28 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
                 </div>
 
                 <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                  <div>
-                    {ex.status === 'approved' ? (
-                      <span className="px-2.5 py-0.5 text-[11px] bg-emerald-100 text-emerald-700 rounded-full font-semibold">
-                        ✅ অনুমোদিত
-                      </span>
-                    ) : ex.status === 'rejected' ? (
-                      <span className="px-2.5 py-0.5 text-[11px] bg-red-100 text-red-700 rounded-full font-semibold">
-                        বাতিলকৃত
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 text-[11px] bg-amber-100 text-amber-700 rounded-full font-semibold">
-                        ⏳ পেন্ডিং
-                      </span>
-                    )}
-                  </div>
+                  <span className={`px-2.5 py-0.5 text-[11px] rounded-full font-semibold ${ex.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : ex.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {ex.status === 'approved' ? '✅ অনুমোদিত' : ex.status === 'rejected' ? '❌ বাতিলকৃত' : '⏳ পেন্ডিং'}
+                  </span>
 
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {ex.status === 'approved' && (
-                      <button
-                        onClick={() => handlePrintVoucher(ex)}
-                        className="px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-lg"
-                      >
+                      <button onClick={() => handlePrintVoucher(ex)} className="px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-lg">
                         🖨️ প্রিন্ট
                       </button>
                     )}
                     {isSuper && (
                       <>
                         {ex.status !== 'approved' && (
-                          <button
-                            onClick={() => handleStatusChange(ex._id, 'approved')}
-                            className="px-2.5 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-lg"
-                          >
+                          <button onClick={() => handleStatusChange(ex._id, 'approved')} className="px-2.5 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-lg">
                             ✅ অ্যাপ্রুভ
                           </button>
                         )}
-                        <button
-                          onClick={() => setEditingItem(ex)}
-                          className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold rounded-lg"
-                        >
+                        <button onClick={() => setEditingItem(ex)} className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold rounded-lg">
                           ✏️ এডিট
                         </button>
                         {ex.status !== 'rejected' && (
-                          <button
-                            onClick={() => handleStatusChange(ex._id, 'rejected')}
-                            className="px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold rounded-lg"
-                          >
+                          <button onClick={() => handleStatusChange(ex._id, 'rejected')} className="px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold rounded-lg">
                             বাতিল
                           </button>
                         )}
@@ -384,112 +395,82 @@ export default function RegionalExpenseSection({ initialExpenses, isSuper }) {
           })
         )}
       </div>
-      {/* 💻 ডেস্কটপ ভিউ: পরিচ্ছন্ন টেবিল */}
+      {/* 💻 ডেস্কটপ ভিউ */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
             <tr className="bg-gray-50 border-b text-gray-600 text-xs">
-              <th className="py-3 px-3">তারিখ ও খাত</th>
-              <th className="py-3 px-3">যে অ্যাডমিন এন্ট্রি করেছেন</th>
-              <th className="py-3 px-3">যাকে দেওয়া / যার থেকে নেওয়া হয়েছে</th>
-              <th className="py-3 px-3">পরিমাণ</th>
-              <th className="py-3 px-3">অবস্থা</th>
-              <th className="py-3 px-3 text-right">অ্যাকশন ও প্রিন্ট</th>
+              <th className="py-3 px-4">তারিখ ও খাত</th>
+              <th className="py-3 px-4">যে অ্যাডমিন এন্ট্রি করেছেন</th>
+              <th className="py-3 px-4">যাকে দেওয়া / যার থেকে নেওয়া হয়েছে</th>
+              <th className="py-3 px-4">পরিমাণ</th>
+              <th className="py-3 px-4">অবস্থা</th>
+              <th className="py-3 px-4 text-right">অ্যাকশন ও প্রিন্ট</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {expenses.length === 0 ? (
+            {displayedExpenses.length === 0 ? (
               <tr>
                 <td colSpan="6" className="py-6 text-center text-xs text-gray-400">
-                  এখনো কোনো আয়-ব্যয়ের লেনদেন রেকর্ড করা হয়নি
+                  এই তালিকায় কোনো রেকর্ড নেই
                 </td>
               </tr>
             ) : (
-              expenses.map((ex) => {
+              displayedExpenses.map((ex) => {
                 const areaText = [ex.union, ex.upazila, ex.district, ex.division]
                   .filter(Boolean)
                   .join(', ');
 
                 return (
                   <tr key={ex._id} className="hover:bg-gray-50">
-                    <td className="py-3 px-3">
-                      <span
-                        className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                          ex.type === 'income'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}
-                      >
+                    <td className="py-3 px-4">
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${ex.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                         {ex.type === 'income' ? 'আয়' : 'ব্যয়'}
                       </span>
                       <p className="font-semibold text-gray-800 mt-1">{ex.title}</p>
                       {ex.note && <p className="text-xs text-gray-500">নোট: {ex.note}</p>}
                     </td>
 
-                    <td className="py-3 px-3">
+                    <td className="py-3 px-4">
                       <p className="font-semibold text-gray-800">{ex.creatorName}</p>
-                      <p className="text-xs text-indigo-600 font-medium">
-                        {ROLE_NAMES[ex.creatorRole] || ex.creatorRole}
-                      </p>
+                      <p className="text-xs text-indigo-600 font-medium">{ROLE_NAMES[ex.creatorRole] || ex.creatorRole}</p>
                       <p className="text-[11px] text-gray-500">📍 {areaText || 'সেন্ট্রাল'}</p>
                     </td>
 
-                    <td className="py-3 px-3">
+                    <td className="py-3 px-4">
                       <p className="font-semibold text-gray-800">{ex.partyName}</p>
                       {ex.partyPhone && <p className="text-xs text-gray-500">📞 {ex.partyPhone}</p>}
                     </td>
 
-                    <td className={`py-3 px-3 font-bold whitespace-nowrap ${ex.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <td className={`py-3 px-4 font-bold whitespace-nowrap ${ex.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
                       {ex.type === 'income' ? '+' : '-'} ৳{Number(ex.amount).toLocaleString('bn-BD')}
                     </td>
 
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      {ex.status === 'approved' ? (
-                        <span className="px-2.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full font-semibold">
-                          ✅ অনুমোদিত
-                        </span>
-                      ) : ex.status === 'rejected' ? (
-                        <span className="px-2.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full font-semibold">
-                          বাতিলকৃত
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full font-semibold">
-                          ⏳ পেন্ডিং
-                        </span>
-                      )}
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className={`px-2.5 py-0.5 text-xs rounded-full font-semibold ${ex.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : ex.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {ex.status === 'approved' ? '✅ অনুমোদিত' : ex.status === 'rejected' ? '❌ বাতিলকৃত' : '⏳ পেন্ডিং'}
+                      </span>
                     </td>
 
-                    <td className="py-3 px-3 text-right">
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
                       <div className="inline-flex items-center justify-end gap-1.5">
                         {ex.status === 'approved' && (
-                          <button
-                            onClick={() => handlePrintVoucher(ex)}
-                            className="px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded hover:bg-slate-800 whitespace-nowrap cursor-pointer"
-                          >
+                          <button onClick={() => handlePrintVoucher(ex)} className="px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded hover:bg-slate-800 cursor-pointer">
                             🖨️ প্রিন্ট
                           </button>
                         )}
                         {isSuper && (
                           <>
                             {ex.status !== 'approved' && (
-                              <button
-                                onClick={() => handleStatusChange(ex._id, 'approved')}
-                                className="px-2.5 py-1 bg-emerald-600 text-white text-xs font-semibold rounded hover:bg-emerald-700 whitespace-nowrap cursor-pointer"
-                              >
+                              <button onClick={() => handleStatusChange(ex._id, 'approved')} className="px-2.5 py-1 bg-emerald-600 text-white text-xs font-semibold rounded hover:bg-emerald-700 cursor-pointer">
                                 ✅ অ্যাপ্রুভ
                               </button>
                             )}
-                            <button
-                              onClick={() => setEditingItem(ex)}
-                              className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold rounded hover:bg-blue-100 whitespace-nowrap cursor-pointer"
-                            >
+                            <button onClick={() => setEditingItem(ex)} className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold rounded hover:bg-blue-100 cursor-pointer">
                               ✏️ এডিট
                             </button>
                             {ex.status !== 'rejected' && (
-                              <button
-                                onClick={() => handleStatusChange(ex._id, 'rejected')}
-                                className="px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold rounded hover:bg-red-100 whitespace-nowrap cursor-pointer"
-                              >
+                              <button onClick={() => handleStatusChange(ex._id, 'rejected')} className="px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold rounded hover:bg-red-100 cursor-pointer">
                                 বাতিল
                               </button>
                             )}

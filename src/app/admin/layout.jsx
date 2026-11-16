@@ -6,7 +6,10 @@ import { verifyAdmin } from "@/lib/adminAuth";
 import { ROLE_ROUTES } from "@/utils/roleRedirect";
 import SecurityAlertBanner from "@/components/admin/SecurityAlertBanner";
 import ImpersonateBanner from "@/components/admin/ImpersonateBanner";
-import AdminLogoutButton from "@/components/admin/AdminLogoutButton"; // 👈 নতুন ইম্পোর্ট
+import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
+import NotificationBell from "@/components/NotificationBell";
+
+
 
 const ROLE_LABELS = {
   super_admin: "সুপার অ্যাডমিন",
@@ -33,8 +36,9 @@ async function ProtectedAdminWrapper({ children }) {
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* সাইডবার নেভিগেশন (আপনার অরিজিনাল ডিজাইন) */}
       <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0">
-        <div className="p-5 border-b border-slate-800">
-          <h2 className="text-lg font-bold text-emerald-400">
+        <div className="p-5 border-b border-slate-800 flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-bold text-emerald-400">
             🛡️ {ROLE_LABELS[admin.role] || "অ্যাডমিন প্যানেল"}
           </h2>
           <p className="text-xs text-slate-400 mt-1">লগইন: {admin.name}</p>
@@ -47,6 +51,9 @@ async function ProtectedAdminWrapper({ children }) {
               {admin.union || admin.upazila || admin.district || admin.division}
             </p>
           )}
+          </div>
+          {/* 🔔 নোটিফিকেশন বেল */}
+          <NotificationBell />
         </div>
 
         <nav className="p-4 flex md:flex-col gap-2 overflow-x-auto text-sm">
