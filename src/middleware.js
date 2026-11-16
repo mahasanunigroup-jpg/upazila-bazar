@@ -10,6 +10,7 @@ const ADMIN_ROLES = [
   'upazila_admin',
   'union_admin',
   'admin'
+  
 ];
 
 // এই কমন পেজগুলোতে সব স্তরের অ্যাডমিন ঢুকতে পারবে (তাদের নিজস্ব এলাকার ডাটা দেখার জন্য)
@@ -17,6 +18,7 @@ const SHARED_ADMIN_PATHS = [
   '/admin/orders',
   '/admin/users',
   '/admin/products',
+   '/admin/finance',
 ];
 
 export async function middleware(request) {

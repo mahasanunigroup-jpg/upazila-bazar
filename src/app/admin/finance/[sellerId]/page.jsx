@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import mongoose from "mongoose";
 import Link from "next/link";
 import connectDB from "@/lib/db";
@@ -7,6 +8,8 @@ import Order from "@/models/Order";
 import User from "@/models/User";
 import Setting from "@/models/Setting";
 import SellerFinanceReportClient from "@/components/admin/SellerFinanceReportClient";
+import { verifyAdmin } from "@/lib/adminAuth";
+import { buildLocationScope } from "@/lib/adminScope";
 
 export const metadata = {
   title: "সেলার বিক্রয় ও কমিশন রিপোর্ট | অ্যাডমিন প্যানেল",
@@ -14,6 +17,11 @@ export const metadata = {
 
 async function SellerFinanceLoader({ params }) {
   await connection();
+
+  // ১. অ্যাডমিন ভেরিফিকেশন
+  const admin = await verifyAdmin();
+  if (!admin) redirect("/unauthorized");
+
   const { sellerId } = await params;
 
   if (!mongoose.Types.ObjectId.isValid(sellerId)) {
@@ -23,8 +31,13 @@ async function SellerFinanceLoader({ params }) {
   await connectDB();
   const sellerObjId = new mongoose.Types.ObjectId(sellerId);
 
+  // ২. এলাকাভিত্তিক ফিল্টার (আঞ্চলিক অ্যাডমিন হলে কেবল নিজ এলাকার সেলার দেখবে)
+  const locationFilter = buildLocationScope(admin);
+
   const [seller, orders, globalSettings] = await Promise.all([
-    User.findById(sellerObjId).select("name shopName phone upazila").lean(),
+    User.findOne({ _id: sellerObjId, ...locationFilter })
+      .select("name shopName phone upazila")
+      .lean(),
     Order.find({
       "items.sellerId": sellerObjId,
       $or: [{ deliveryStatus: "delivered" }, { status: "delivered" }],
@@ -35,7 +48,11 @@ async function SellerFinanceLoader({ params }) {
   ]);
 
   if (!seller) {
-    return <div className="p-6 text-red-600">সেলার পাওয়া যায়নি!</div>;
+    return (
+      <div className="p-6 text-red-600 bg-white rounded-xl border border-red-100">
+        সেলার পাওয়া যায়নি অথবা আপনার এই এলাকার সেলারের রিপোর্ট দেখার অনুমতি নেই!
+      </div>
+    );
   }
 
   const commissionPercent = Number(globalSettings?.commissionPercent ?? 5);

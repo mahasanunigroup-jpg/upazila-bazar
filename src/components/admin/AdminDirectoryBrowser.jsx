@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BD_LOCATIONS } from "@/data/bdLocations";
 import { BD_DIVISIONS } from "@/lib/divisionMap";
-import { ChevronRight, MapPin, ShieldCheck, FileText } from "lucide-react";
+import { ChevronRight, ChevronDown, MapPin, ShieldCheck, FileText } from "lucide-react";
 import BiodataPrintModal from "./BiodataPrintModal";
 
 const ROLE_DISPLAY = {
@@ -24,7 +24,7 @@ function AdminDetailCard({ adm, onViewBio }) {
           </span>
         </div>
 
-                  {adm.customId && (
+        {adm.customId && (
           <div className="inline-flex items-center gap-1.5 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full shadow-2xs">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             <span className="text-[11px] font-mono font-bold tracking-wide text-slate-800">
@@ -32,7 +32,6 @@ function AdminDetailCard({ adm, onViewBio }) {
             </span>
           </div>
         )}
-
 
         <p className="text-gray-700 font-medium">
           📞 {adm.phone || "নম্বর নেই"}
@@ -46,7 +45,6 @@ function AdminDetailCard({ adm, onViewBio }) {
         </p>
       </div>
 
-      {/* পূর্ণ বায়োডাটা ও প্রিন্ট বাটন */}
       <button
         type="button"
         onClick={() => onViewBio(adm)}
@@ -59,6 +57,8 @@ function AdminDetailCard({ adm, onViewBio }) {
 }
 
 export default function AdminDirectoryBrowser({ users, currentAdmin }) {
+  const [isOpen, setIsOpen] = useState(false);
+
   const isSuperAdmin =
     currentAdmin.role === "admin" || currentAdmin.role === "super_admin";
 
@@ -107,274 +107,301 @@ export default function AdminDirectoryBrowser({ users, currentAdmin }) {
       a.district === drillDistrict &&
       a.upazila === drillUpazila,
   );
-  return (
+
+    return (
     <>
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+        {/* ক্লিকেবল হেডার বার */}
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          className={`flex flex-wrap items-center justify-between gap-2 cursor-pointer select-none ${
+            isOpen ? "border-b pb-3" : ""
+          }`}
+        >
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600" />
             <h3 className="font-bold text-gray-800 text-sm">
               এলাকাভিত্তিক অ্যাডমিন ডিরেক্টরি (ক্লিক করে বিস্তারিত দেখুন)
             </h3>
+            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-0.5">
+              {isOpen ? (
+                <>
+                  বন্ধ করুন <ChevronDown className="w-3.5 h-3.5" />
+                </>
+              ) : (
+                <>
+                  খুলুন <ChevronRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-            {isSuperAdmin && (
-              <button
-                onClick={() => {
-                  setDrillDivision("");
-                  setDrillDistrict("");
-                  setDrillUpazila("");
-                }}
-                className={`px-2 py-1 rounded cursor-pointer ${
-                  !drillDivision
-                    ? "bg-emerald-600 text-white"
-                    : "text-emerald-700 hover:bg-emerald-50"
-                }`}
-              >
-                সকল বিভাগ
-              </button>
-            )}
-            {drillDivision && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+          {isOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="flex flex-wrap items-center gap-1.5 text-xs font-semibold"
+            >
+              {isSuperAdmin && (
                 <button
                   onClick={() => {
-                    if (isSuperAdmin || !currentAdmin.district)
-                      setDrillDistrict("");
-                    if (isSuperAdmin || !currentAdmin.upazila)
-                      setDrillUpazila("");
+                    setDrillDivision("");
+                    setDrillDistrict("");
+                    setDrillUpazila("");
                   }}
                   className={`px-2 py-1 rounded cursor-pointer ${
-                    drillDivision && !drillDistrict
+                    !drillDivision
                       ? "bg-emerald-600 text-white"
                       : "text-emerald-700 hover:bg-emerald-50"
                   }`}
                 >
-                  {drillDivision}
+                  সকল বিভাগ
                 </button>
-              </>
-            )}
-            {drillDistrict && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                <button
-                  onClick={() => {
-                    if (isSuperAdmin || !currentAdmin.upazila)
-                      setDrillUpazila("");
-                  }}
-                  className={`px-2 py-1 rounded cursor-pointer ${
-                    drillDistrict && !drillUpazila
-                      ? "bg-emerald-600 text-white"
-                      : "text-emerald-700 hover:bg-emerald-50"
-                  }`}
-                >
-                  {drillDistrict}
-                </button>
-              </>
-            )}
-            {drillUpazila && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                <span className="px-2 py-1 rounded bg-emerald-600 text-white">
-                  {drillUpazila}
-                </span>
-              </>
-            )}
-          </div>
+              )}
+              {drillDivision && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                  <button
+                    onClick={() => {
+                      if (isSuperAdmin || !currentAdmin.district)
+                        setDrillDistrict("");
+                      if (isSuperAdmin || !currentAdmin.upazila)
+                        setDrillUpazila("");
+                    }}
+                    className={`px-2 py-1 rounded cursor-pointer ${
+                      drillDivision && !drillDistrict
+                        ? "bg-emerald-600 text-white"
+                        : "text-emerald-700 hover:bg-emerald-50"
+                    }`}
+                  >
+                    {drillDivision}
+                  </button>
+                </>
+              )}
+              {drillDistrict && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                  <button
+                    onClick={() => {
+                      if (isSuperAdmin || !currentAdmin.upazila)
+                        setDrillUpazila("");
+                    }}
+                    className={`px-2 py-1 rounded cursor-pointer ${
+                      drillDistrict && !drillUpazila
+                        ? "bg-emerald-600 text-white"
+                        : "text-emerald-700 hover:bg-emerald-50"
+                    }`}
+                  >
+                    {drillDistrict}
+                  </button>
+                </>
+              )}
+              {drillUpazila && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="px-2 py-1 rounded bg-emerald-600 text-white">
+                    {drillUpazila}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ধাপ ১: সব বিভাগ */}
-        {!drillDivision && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {divisionsList.map((div) => {
-              const divDistricts = BD_DIVISIONS[div] || [];
-              const count = allAdmins.filter(
-                (a) => a.division === div || divDistricts.includes(a.district),
-              ).length;
-              return (
-                <button
-                  key={div}
-                  onClick={() => setDrillDivision(div)}
-                  className="p-3.5 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition cursor-pointer"
-                >
-                  <p className="font-bold text-gray-800 text-sm">{div} বিভাগ</p>
-                  <p className="text-xs text-emerald-700 font-semibold mt-1">
-                    মোট অ্যাডমিন: {count} জন →
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ধাপ ২: বিভাগীয় অ্যাডমিন ডিটেইলস + জেলার তালিকা */}
-        {drillDivision && !drillDistrict && (
-          <div className="space-y-4">
-            {currentDivisionAdmins.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-emerald-800">
-                  🛡️ {drillDivision} বিভাগের বিভাগীয় অ্যাডমিন (Division Admin):
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {currentDivisionAdmins.map((adm) => (
-                    <AdminDetailCard
-                      key={adm._id}
-                      adm={adm}
-                      onViewBio={setSelectedBioUser}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <p className="text-xs font-bold text-gray-600 mb-2">
-                {drillDivision} বিভাগের জেলাসমূহ:
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {(BD_DIVISIONS[drillDivision] || []).map((dist) => {
-                  const distAdmins = allAdmins.filter(
-                    (a) => a.district === dist && a.role !== "division_admin",
-                  );
-                  const zilaHead = distAdmins.find(
-                    (a) => a.role === "district_admin",
-                  );
-                  return (
-                    <button
-                      key={dist}
-                      onClick={() => setDrillDistrict(dist)}
-                      className="p-3 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition cursor-pointer"
-                    >
-                      <p className="font-bold text-gray-800 text-sm">
-                        {dist} জেলা
-                      </p>
-                      <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                        জেলা অ্যাডমিন: {zilaHead ? zilaHead.name : "নিয়োগ হয়নি"}
-                      </p>
-                      <p className="text-xs text-emerald-700 font-semibold mt-1">
-                        মোট অ্যাডমিন: {distAdmins.length} জন →
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-        {/* ধাপ ৩: জেলা অ্যাডমিন ডিটেইলস + উপজেলার তালিকা */}
-        {drillDistrict && !drillUpazila && (
-          <div className="space-y-4">
-            {currentDistrictAdmins.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-emerald-800">
-                  🛡️ {drillDistrict} জেলার জেলা অ্যাডমিন (Zila Admin):
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {currentDistrictAdmins.map((adm) => (
-                    <AdminDetailCard
-                      key={adm._id}
-                      adm={adm}
-                      onViewBio={setSelectedBioUser}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <p className="text-xs font-bold text-gray-600 mb-2">
-                {drillDistrict} জেলার উপজেলাসমূহ:
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {Object.keys(BD_LOCATIONS[drillDistrict] || {}).map((upz) => {
-                  const upzAdmins = allAdmins.filter(
+        {isOpen && (
+          <>
+            {/* ধাপ ১: সব বিভাগ */}
+            {!drillDivision && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {divisionsList.map((div) => {
+                  const divDistricts = BD_DIVISIONS[div] || [];
+                  const count = allAdmins.filter(
                     (a) =>
-                      a.district === drillDistrict &&
-                      a.upazila === upz &&
-                      ["upazila_admin", "union_admin"].includes(a.role),
-                  );
-                  const upzHead = upzAdmins.find(
-                    (a) => a.role === "upazila_admin",
-                  );
+                      a.division === div || divDistricts.includes(a.district),
+                  ).length;
                   return (
                     <button
-                      key={upz}
-                      onClick={() => setDrillUpazila(upz)}
+                      key={div}
+                      onClick={() => setDrillDivision(div)}
                       className="p-3.5 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition cursor-pointer"
                     >
                       <p className="font-bold text-gray-800 text-sm">
-                        {upz} উপজেলা
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        উপজেলা অ্যাডমিন:{" "}
-                        <span className="font-semibold text-gray-800">
-                          {upzHead
-                            ? `${upzHead.name} (${upzHead.phone})`
-                            : "নিয়োগ হয়নি"}
-                        </span>
+                        {div} বিভাগ
                       </p>
                       <p className="text-xs text-emerald-700 font-semibold mt-1">
-                        ইউনিয়ন অ্যাডমিন:{" "}
-                        {
-                          upzAdmins.filter((a) => a.role === "union_admin")
-                            .length
-                        }{" "}
-                        জন →
+                        মোট অ্যাডমিন: {count} জন →
                       </p>
                     </button>
                   );
                 })}
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* ধাপ ৪: উপজেলা অ্যাডমিন + ইউনিয়ন অ্যাডমিনদের ডিটেইলস */}
-        {drillUpazila && (
-          <div className="space-y-4">
-            {currentUpazilaAdmins.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-emerald-800">
-                  🛡️ {drillUpazila} উপজেলার উপজেলা অ্যাডমিন (Upazila Admin):
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {currentUpazilaAdmins.map((adm) => (
-                    <AdminDetailCard
-                      key={adm._id}
-                      adm={adm}
-                      onViewBio={setSelectedBioUser}
-                    />
-                  ))}
+            {/* ধাপ ২: বিভাগীয় অ্যাডমিন ডিটেইলস + জেলার তালিকা */}
+            {drillDivision && !drillDistrict && (
+              <div className="space-y-4">
+                {currentDivisionAdmins.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-emerald-800">
+                      🛡️ {drillDivision} বিভাগের বিভাগীয় অ্যাডমিন (Division Admin):
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {currentDivisionAdmins.map((adm) => (
+                        <AdminDetailCard
+                          key={adm._id}
+                          adm={adm}
+                          onViewBio={setSelectedBioUser}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-2">
+                    {drillDivision} বিভাগের জেলাসমূহ:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {(BD_DIVISIONS[drillDivision] || []).map((dist) => {
+                      const count = allAdmins.filter(
+                        (a) => a.district === dist,
+                      ).length;
+                      const distAdmin = allAdmins.find(
+                        (a) =>
+                          a.district === dist && a.role === "district_admin",
+                      );
+                      return (
+                        <button
+                          key={dist}
+                          onClick={() => setDrillDistrict(dist)}
+                          className="p-3 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition cursor-pointer"
+                        >
+                          <p className="font-bold text-gray-800 text-sm">
+                            {dist} জেলা
+                          </p>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {distAdmin
+                              ? `জেলা অ্যাডমিন: ${distAdmin.name}`
+                              : "জেলা অ্যাডমিন নিয়োগ হয়নি"}
+                          </p>
+                          <p className="text-xs text-emerald-700 font-semibold mt-1">
+                            মোট অ্যাডমিন: {count} জন →
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* ধাপ ৩: জেলা অ্যাডমিন ডিটেইলস + উপজেলার তালিকা */}
+            {drillDistrict && !drillUpazila && (
+              <div className="space-y-4">
+                {currentDistrictAdmins.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-emerald-800">
+                      🛡️ {drillDistrict} জেলার জেলা অ্যাডমিন (Zila Admin):
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {currentDistrictAdmins.map((adm) => (
+                        <AdminDetailCard
+                          key={adm._id}
+                          adm={adm}
+                          onViewBio={setSelectedBioUser}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-2">
+                    {drillDistrict} জেলার উপজেলাসমূহ:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {Object.keys(BD_LOCATIONS[drillDistrict] || {}).map(
+                      (upz) => {
+                        const count = allAdmins.filter(
+                          (a) =>
+                            a.district === drillDistrict && a.upazila === upz,
+                        ).length;
+                        const upzAdmin = allAdmins.find(
+                          (a) =>
+                            a.district === drillDistrict &&
+                            a.upazila === upz &&
+                            a.role === "upazila_admin",
+                        );
+                        return (
+                          <button
+                            key={upz}
+                            onClick={() => setDrillUpazila(upz)}
+                            className="p-3 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition cursor-pointer"
+                          >
+                            <p className="font-bold text-gray-800 text-sm">
+                              {upz} উপজেলা
+                            </p>
+                            <p className="text-[11px] text-gray-500 truncate">
+                              {upzAdmin
+                                ? `উপজেলা অ্যাডমিন: ${upzAdmin.name}`
+                                : "উপজেলা অ্যাডমিন নেই"}
+                            </p>
+                            <p className="text-xs text-emerald-700 font-semibold mt-1">
+                              মোট অ্যাডমিন: {count} জন →
+                            </p>
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-gray-700">
-                📍 {drillUpazila} উপজেলার ইউনিয়ন অ্যাডমিন তালিকা (Union Admins):
-              </p>
-              {currentUnionAdmins.length === 0 ? (
-                <p className="text-xs text-gray-500 py-2">
-                  এই উপজেলায় এখনো কোনো ইউনিয়ন অ্যাডমিন নিয়োগ দেওয়া হয়নি।
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {currentUnionAdmins.map((adm) => (
-                    <AdminDetailCard
-                      key={adm._id}
-                      adm={adm}
-                      onViewBio={setSelectedBioUser}
-                    />
-                  ))}
+            {/* ধাপ ৪: উপজেলা ও ইউনিয়ন অ্যাডমিন ডিটেইলস */}
+            {drillUpazila && (
+              <div className="space-y-4">
+                {currentUpazilaAdmins.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-emerald-800">
+                      🛡️ {drillUpazila} উপজেলার উপজেলা অ্যাডমিন (Upazila Admin):
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {currentUpazilaAdmins.map((adm) => (
+                        <AdminDetailCard
+                          key={adm._id}
+                          adm={adm}
+                          onViewBio={setSelectedBioUser}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-gray-700">
+                    📍 {drillUpazila} উপজেলার ইউনিয়ন অ্যাডমিনসমূহ (Union Admins):
+                  </p>
+                  {currentUnionAdmins.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {currentUnionAdmins.map((adm) => (
+                        <AdminDetailCard
+                          key={adm._id}
+                          adm={adm}
+                          onViewBio={setSelectedBioUser}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">
+                      এই উপজেলায় এখনো কোনো ইউনিয়ন অ্যাডমিন নিয়োগ দেওয়া হয়নি।
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* প্রিন্টযোগ্য পূর্ণাঙ্গ বায়োডাটা মডাল */}
       {selectedBioUser && (
         <BiodataPrintModal
           user={selectedBioUser}

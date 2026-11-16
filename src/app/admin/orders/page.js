@@ -77,7 +77,7 @@ async function AdminOrdersContent() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full min-w-[750px] text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 text-xs text-gray-600 uppercase border-b">
               <th className="p-4">অর্ডার আইডি</th>

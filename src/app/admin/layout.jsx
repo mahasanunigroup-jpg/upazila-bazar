@@ -38,9 +38,13 @@ async function ProtectedAdminWrapper({ children }) {
             🛡️ {ROLE_LABELS[admin.role] || "অ্যাডমিন প্যানেল"}
           </h2>
           <p className="text-xs text-slate-400 mt-1">লগইন: {admin.name}</p>
-          {(admin.division || admin.district || admin.upazila || admin.union) && (
+          {(admin.division ||
+            admin.district ||
+            admin.upazila ||
+            admin.union) && (
             <p className="text-xs text-emerald-400/90 mt-0.5">
-              এলাকা: {admin.union || admin.upazila || admin.district || admin.division}
+              এলাকা:{" "}
+              {admin.union || admin.upazila || admin.district || admin.division}
             </p>
           )}
         </div>
@@ -73,16 +77,15 @@ async function ProtectedAdminWrapper({ children }) {
           >
             🛍️ পণ্য মডারেশন
           </Link>
+          <Link
+            href="/admin/finance"
+            className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
+          >
+            💰 আয় ও কমিশন হিসাব
+          </Link>
 
           {isSuper && (
             <>
-              <Link
-                href="/admin/finance"
-                className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
-              >
-                💰 আয় ও কমিশন হিসাব
-              </Link>
-
               <Link
                 href="/admin/settings"
                 className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
@@ -105,7 +108,8 @@ async function ProtectedAdminWrapper({ children }) {
       </aside>
 
       {/* মেইন কন্টেন্ট এরিয়া */}
-      <main className="flex-1 p-4 md:p-8 max-w-7xl">
+      {/* মেইন কন্টেন্ট এরিয়া (সব ডিভাইসের জন্য রেসপনসিভ ফিক্স) */}
+      <main className="flex-1 min-w-0 w-full p-3 sm:p-5 md:p-8 max-w-7xl mx-auto overflow-x-hidden">
         {isImpersonating && (
           <ImpersonateBanner targetName={admin.name} targetRole={admin.role} />
         )}
