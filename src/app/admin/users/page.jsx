@@ -37,25 +37,40 @@ async function UsersDataSection() {
     .sort({ createdAt: -1 })
     .lean();
 
-  const users = rawUsers.map((u) => ({
+  // পদমর্যাদা অনুযায়ী সিরিয়াল নির্ধারণ (১ নম্বর সবার উপরে থাকবে)
+  const ROLE_PRIORITY = {
+    super_admin: 1,
+    admin: 1,
+    division_admin: 2,
+    district_admin: 3,
+    upazila_admin: 4,
+    union_admin: 5,
+    seller: 6,
+    rider: 7,
+    customer: 8,
+  };
 
-    customId: getDisplayUserId(u),
+  const users = rawUsers
+    .map((u) => ({
+      customId: getDisplayUserId(u),
+      _id: u._id.toString(),
+      name: u.name || "নাম নেই",
+      email: u.email || "",
+      phone: u.phone || "",
+      role: u.role || "customer",
+      division: u.division || "",
+      district: u.district || "",
+      upazila: u.upazila || "",
+      union: u.union || "",
+      address: u.address || "",
+      biodata: u.biodata || {},
+      isApproved: u.isApproved ?? true,
+      isBlocked: u.isBlocked ?? false,
+      status: u.status || (u.isBlocked ? "blocked" : "active"),
+    }))
+    // 👇 সুপার অ্যাডমিনকে সবার উপরে এবং বাকিদের পদমর্যাদা অনুযায়ী সাজানো হলো
+    .sort((a, b) => (ROLE_PRIORITY[a.role] || 99) - (ROLE_PRIORITY[b.role] || 99));
 
-    _id: u._id.toString(),
-    name: u.name || "নাম নেই",
-    email: u.email || "",
-    phone: u.phone || "",
-    role: u.role || "customer",
-    division: u.division || "",
-    district: u.district || "",
-    upazila: u.upazila || "",
-    union: u.union || "",
-    address: u.address || "",
-    biodata: u.biodata || {},
-    isApproved: u.isApproved ?? true,
-    isBlocked: u.isBlocked ?? false,
-    status: u.status || (u.isBlocked ? "blocked" : "active"),
-  }));
 
   return (
     <>

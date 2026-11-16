@@ -1,8 +1,12 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
+import User from "@/models/User";
 import AdminProductTable from "@/components/admin/AdminProductTable";
+import { verifyAdmin } from "@/lib/adminAuth";
+import { buildLocationScope } from "@/lib/adminScope";
 
 export const metadata = {
   title: "পণ্য মডারেশন | অ্যাডমিন প্যানেল",
@@ -10,9 +14,39 @@ export const metadata = {
 
 async function ProductsDataSection() {
   await connection();
+
+  // ১. অ্যাডমিন ভেরিফিকেশন
+  const admin = await verifyAdmin();
+  if (!admin) redirect("/unauthorized");
+
   await connectDB();
 
-  const rawProducts = await Product.find({})
+  const isSuper = admin.role === "admin" || admin.role === "super_admin";
+  let productQuery = {};
+
+  // ২. আঞ্চলিক অ্যাডমিন হলে তার এলাকার সেলারদের পণ্য ফিল্টার করা
+  if (!isSuper) {
+    const locationFilter = buildLocationScope(admin);
+    const localSellers = await User.find({
+      role: "seller",
+      ...locationFilter,
+    })
+      .select("_id")
+      .lean();
+
+    const sellerIds = localSellers.map((s) => s._id);
+
+    // পণ্যে সরাসরি এলাকা সেভ থাকলে অথবা সেলারের আইডি মিললে দেখাবে
+    productQuery = {
+      $or: [
+        locationFilter,
+        { sellerId: { $in: sellerIds } },
+        { seller: { $in: sellerIds } },
+      ],
+    };
+  }
+
+  const rawProducts = await Product.find(productQuery)
     .sort({ createdAt: -1 })
     .lean();
 
@@ -33,7 +67,7 @@ async function ProductsDataSection() {
           সকল পণ্য মডারেশন (Product Moderation)
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          প্ল্যাটফর্মে মোট পণ্য:{" "}
+          {isSuper ? "প্ল্যাটফর্মে মোট পণ্য:" : "আপনার আওতাধীন এলাকার মোট পণ্য:"}{" "}
           <span className="font-semibold text-emerald-600">
             {products.length} টি
           </span>

@@ -48,6 +48,10 @@ const userSchema = new mongoose.Schema(
     isApproved: { type: Boolean, default: true },
     isBlocked: { type: Boolean, default: false },
     status: { type: String, default: "active" },
+    registeredDeviceId: { type: String, default: "" },
+    deviceInfo: { type: String, default: "" },
+    activeSessionId: { type: String, default: "" },
+    lastActiveAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

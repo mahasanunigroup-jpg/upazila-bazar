@@ -6,7 +6,7 @@ import { MANAGEABLE_ROLES } from "@/lib/adminScope";
 
 export async function PATCH(req, { params }) {
   try {
-    // ১. ১০০% অ্যাডমিন ভেরিফিকেশন
+    // ১. অ্যাডমিন ভেরিফিকেশন
     const admin = await verifyAdmin();
     if (!admin) {
       return NextResponse.json(
@@ -19,7 +19,7 @@ export async function PATCH(req, { params }) {
     const body = await req.json();
     const { action, role } = body;
 
-    // ২. সেল্ফ-প্রোটেকশন: অ্যাডমিন নিজেকে ব্লক বা ডাউনগ্রেড করতে পারবেন না
+    // ২. সেল্ফ-প্রোটেকশন
     if (id === admin._id) {
       return NextResponse.json(
         { message: "নিরাপত্তার স্বার্থে নিজের অ্যাকাউন্ট পরিবর্তন করা যাবে না!" },
@@ -33,17 +33,33 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: "ইউজার পাওয়া যায়নি" }, { status: 404 });
     }
 
-    // ৩. হায়ারার্কি প্রোটেকশন: বর্তমান অ্যাডমিন কেবল তার অধীনস্থ রোলগুলোই নিয়ন্ত্রণ করতে পারবেন
     const isSuper = admin.role === "admin" || admin.role === "super_admin";
     const allowedRoles = MANAGEABLE_ROLES[admin.role] || [];
 
-    if (!isSuper && !allowedRoles.includes(targetUser.role) && targetUser.role !== "customer") {
-      return NextResponse.json(
-        { message: "আপনি উপরের বা সমপর্যায়ের কোনো অ্যাডমিনকে পরিবর্তন করতে পারবেন না!" },
-        { status: 403 }
-      );
+    // ৩. হায়ারার্কি ও এলাকাভিত্তিক প্রোটেকশন
+    if (!isSuper) {
+      if (!allowedRoles.includes(targetUser.role) && targetUser.role !== "customer") {
+        return NextResponse.json(
+          { message: "আপনি উপরের বা সমপর্যায়ের কোনো অ্যাডমিনকে পরিবর্তন করতে পারবেন না!" },
+          { status: 403 }
+        );
+      }
+
+      const isSameArea =
+        (admin.role === "division_admin" && targetUser.division === admin.division) ||
+        (admin.role === "district_admin" && targetUser.district === admin.district) ||
+        (admin.role === "upazila_admin" && targetUser.upazila === admin.upazila) ||
+        (admin.role === "union_admin" && targetUser.union === admin.union);
+
+      if (!isSameArea) {
+        return NextResponse.json(
+          { message: "আপনি অন্য এলাকার কোনো ইউজার বা অ্যাডমিনকে পরিবর্তন করতে পারবেন না!" },
+          { status: 403 }
+        );
+      }
     }
 
+    // ৪. অ্যাকশন প্রয়োগ (জরুরি সেশন আনলকসহ)
     if (action === "approve") {
       targetUser.isApproved = true;
       targetUser.isVerified = true;
@@ -52,9 +68,12 @@ export async function PATCH(req, { params }) {
     } else if (action === "block") {
       targetUser.isBlocked = true;
       targetUser.status = "blocked";
+      targetUser.activeSessionId = ""; // ব্লক করলে সাথে সাথে লগআউটও হয়ে যাবে
     } else if (action === "unblock") {
       targetUser.isBlocked = false;
       targetUser.status = "approved";
+    } else if (action === "unlockSession") {
+      targetUser.activeSessionId = ""; // 🔓 জরুরি প্রয়োজনে ডিভাইস/সেশন লক খোলা
     } else if (
       action === "changeRole" &&
       (isSuper || allowedRoles.includes(role) || role === "customer")
@@ -74,6 +93,7 @@ export async function PATCH(req, { params }) {
         status: targetUser.status,
         isApproved: targetUser.isApproved,
         isBlocked: targetUser.isBlocked,
+        activeSessionId: targetUser.activeSessionId,
       },
     });
   } catch (error) {

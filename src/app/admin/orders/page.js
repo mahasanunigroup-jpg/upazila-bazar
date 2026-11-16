@@ -1,28 +1,29 @@
 import { Suspense } from "react";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { jwtVerify } from "jose";
 import connectDB from "@/lib/db";
 import Order from "@/models/Order";
 import User from "@/models/User";
 import AdminRiderAssign from "@/components/AdminRiderAssign";
+import { verifyAdmin } from "@/lib/adminAuth";
+import { buildLocationScope } from "@/lib/adminScope";
 
 async function getAdminData() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) redirect("/login");
+  // ১. try ব্লকের বাইরে অ্যাডমিন ভেরিফিকেশন (যাতে NEXT_REDIRECT এরর না আসে)
+  const admin = await verifyAdmin();
+  if (!admin) redirect("/unauthorized");
 
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    if (payload.role !== "admin") redirect("/unauthorized");
-
     await connectDB();
 
-    // প্যারালাল কুয়েরি: অর্ডার এবং রাইডার একসাথে লোড হবে (সুপার-ফাস্ট)
+    // ২. অ্যাডমিনের রোল ও এলাকা অনুযায়ী কুয়েরি ফিল্টার তৈরি
+    const locationFilter = buildLocationScope(admin);
+
+    // প্যারালাল কুয়েরি: অ্যাডমিনের নিজস্ব এলাকার অর্ডার এবং রাইডার লোড হবে
     const [rawOrders, rawRiders] = await Promise.all([
-      Order.find({}).sort({ createdAt: -1 }).limit(50).lean(),
-      User.find({ role: "rider" }).select("name phone upazila district").lean(),
+      Order.find(locationFilter).sort({ createdAt: -1 }).limit(50).lean(),
+      User.find({ role: "rider", ...locationFilter })
+        .select("name phone upazila district")
+        .lean(),
     ]);
 
     const orders = rawOrders.map((o) => ({

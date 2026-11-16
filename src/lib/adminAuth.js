@@ -29,11 +29,22 @@ export async function verifyAdmin() {
 
     await connectDB();
     const adminUser = await User.findById(userId)
-      .select("_id name email phone role division district upazila union isBlocked status")
+      .select("_id name email phone role division district upazila union isBlocked status activeSessionId")
       .lean();
 
     if (!adminUser || !ADMIN_ROLES.includes(adminUser.role)) return null;
     if (adminUser.isBlocked || adminUser.status === "blocked") return null;
+
+    // 🔒 সিঙ্গেল সেশন লক চেক
+    if (adminUser.activeSessionId && payload.sessionId !== adminUser.activeSessionId) {
+      return null;
+    }
+
+    // ✅ এইখানে সঠিক জায়গায় বসানো হলো (adminUser ভেরিফাই হওয়ার পর)
+    await User.updateOne(
+      { _id: adminUser._id },
+      { $set: { lastActiveAt: new Date() } }
+    );
 
     return {
       ...adminUser,

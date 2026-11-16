@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
-// বাটনে ক্লিক করার পরই কেবল ফর্ম ও লোকেশন ডাটা লোড হবে (সুপার-ফাস্ট লোডিং)
 const CreateAdminForm = dynamic(() => import("./CreateAdminForm"), {
   loading: () => <p className="text-xs text-emerald-600">ফর্ম লোড হচ্ছে...</p>,
 });
@@ -34,6 +33,9 @@ export default function AdminUserTable({
   const [search, setSearch] = useState("");
   const [loadingId, setLoadingId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const isSuperAdmin =
+    currentAdmin?.role === "super_admin" || currentAdmin?.role === "admin";
 
   const filteredUsers = users.filter((u) => {
     const matchesRole =
@@ -74,6 +76,9 @@ export default function AdminUserTable({
       setUsers((prev) =>
         prev.map((u) => (u._id === userId ? { ...u, ...data.user } : u)),
       );
+      if (payload.action === "unlockSession") {
+        alert("ইউজারের সেশন লক সফলভাবে খোলা হয়েছে!");
+      }
       router.refresh();
     } catch (err) {
       alert(err.message || "আপডেট ব্যর্থ হয়েছে");
@@ -82,6 +87,25 @@ export default function AdminUserTable({
     }
   };
 
+  // 👁️ সুপার অ্যাডমিন থেকে পাসওয়ার্ড ছাড়াই অন্য অ্যাকাউন্টে প্রবেশ করার ফাংশন
+  const handleLoginAsUser = async (targetUserId) => {
+    setLoadingId(targetUserId);
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "প্রবেশ করা সম্ভব হয়নি");
+
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.href = data.redirectUrl;
+    } catch (err) {
+      alert(err.message);
+      setLoadingId(null);
+    }
+  };
   return (
     <div className="space-y-5">
       <div className="flex justify-end">
@@ -158,6 +182,8 @@ export default function AdminUserTable({
             {filteredUsers.map((user) => {
               const isSelf = user._id === currentAdminId;
               const isBlocked = user.isBlocked || user.status === "blocked";
+              const isPending =
+                user.isApproved === false || user.status === "pending";
               const areaText = [
                 user.union,
                 user.upazila,
@@ -170,11 +196,13 @@ export default function AdminUserTable({
               return (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="py-3 px-4">
-                    <p className="font-semibold text-gray-800">
+                    <p className="font-semibold text-gray-800 flex items-center gap-1.5">
                       {user.name}
-                      <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded border">
-                        {user.customId}
-                      </span>
+                      {user.customId && (
+                        <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded border">
+                          {user.customId}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-gray-500">
                       {user.phone || user.email}
@@ -213,8 +241,7 @@ export default function AdminUserTable({
                       <span className="px-2.5 py-0.5 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
                         ব্লকড (Blocked)
                       </span>
-                    ) : user.isApproved === false ||
-                      user.status === "pending" ? (
+                    ) : isPending ? (
                       <span className="px-2.5 py-0.5 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
                         পেন্ডিং অ্যাপ্রুভাল
                       </span>
@@ -225,23 +252,50 @@ export default function AdminUserTable({
                     )}
                   </td>
 
-                  <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
+                  <td className="py-3 px-4 text-right">
                     {isSelf ? (
                       <span className="text-xs text-gray-400 italic">
-                        নিজ অ্যাকাউন্ট
+                        আপনার অ্যাকাউন্ট
                       </span>
                     ) : (
-                      <>
-                        {(user.isApproved === false ||
-                          user.status === "pending") && (
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        {/* 👁️ শুধুমাত্র সুপার অ্যাডমিন পাসওয়ার্ড ছাড়া ঢুকতে পারবেন */}
+                        {isSuperAdmin && (
+                          <button
+                            disabled={loadingId === user._id}
+                            onClick={() => handleLoginAsUser(user._id)}
+                            title="পাসওয়ার্ড ছাড়াই এই অ্যাকাউন্টে প্রবেশ করুন"
+                            className="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                          >
+                            👁️ প্রবেশ করুন
+                          </button>
+                        )}
+
+                        {/* 🔓 জরুরি সেশন লক খোলার বাটন */}
+                        {user.role !== "customer" && (
+                          <button
+                            disabled={loadingId === user._id}
+                            onClick={() =>
+                              handleAction(user._id, {
+                                action: "unlockSession",
+                              })
+                            }
+                            title="ডিভাইস লক হয়ে থাকলে আনলক করুন"
+                            className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                          >
+                            🔓 আনলক
+                          </button>
+                        )}
+
+                        {isPending && (
                           <button
                             disabled={loadingId === user._id}
                             onClick={() =>
                               handleAction(user._id, { action: "approve" })
                             }
-                            className="px-3 py-1 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 rounded-md"
+                            className="px-2.5 py-1 bg-emerald-600 text-white hover:bg-emerald-700 rounded text-xs font-semibold transition cursor-pointer disabled:opacity-50"
                           >
-                            Approve
+                            অ্যাপ্রুভ
                           </button>
                         )}
 
@@ -251,9 +305,9 @@ export default function AdminUserTable({
                             onClick={() =>
                               handleAction(user._id, { action: "unblock" })
                             }
-                            className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md"
+                            className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded text-xs font-semibold transition cursor-pointer disabled:opacity-50"
                           >
-                            Unblock
+                            আনব্লক
                           </button>
                         ) : (
                           <button
@@ -261,12 +315,12 @@ export default function AdminUserTable({
                             onClick={() =>
                               handleAction(user._id, { action: "block" })
                             }
-                            className="px-3 py-1 text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 rounded-md"
+                            className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded text-xs font-semibold transition cursor-pointer disabled:opacity-50"
                           >
-                            Block
+                            ব্লক
                           </button>
                         )}
-                      </>
+                      </div>
                     )}
                   </td>
                 </tr>

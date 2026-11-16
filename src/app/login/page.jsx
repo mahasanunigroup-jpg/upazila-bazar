@@ -1,10 +1,21 @@
 // src/app/login/page.jsx
 'use client';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // 🚀 ১. useRouter ইম্পোর্ট করা হলো
+import { useRouter } from 'next/navigation';
+import { getRedirectPathByRole } from '@/utils/roleRedirect';
+
+// ব্রাউজারের জন্য স্থায়ী ইউনিক Device ID তৈরি বা সংগ্রহ করার ফাংশন
+function getOrCreateDeviceId() {
+  let deviceId = localStorage.getItem('ub_device_id');
+  if (!deviceId) {
+    deviceId = 'dev_' + crypto.randomUUID();
+    localStorage.setItem('ub_device_id', deviceId);
+  }
+  return deviceId;
+}
 
 export default function Login() {
-  const router = useRouter(); // 🚀 ২. রাউটার ইনিশিয়ালাইজ করা হলো
+  const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -15,6 +26,8 @@ export default function Login() {
     setError('');
 
     try {
+      const deviceId = getOrCreateDeviceId(); // 🛡️ ডিভাইস আইডি নেওয়া হলো
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -23,26 +36,11 @@ export default function Login() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage(`স্বাগতম ${data.user.name}! আপনার রোল: ${data.user.role}`);
-        
-        // লোকাল স্টোরেজে ইউজারের তথ্য সেভ করা
+       setMessage(`স্বাগতম ${data.user.name}! আপনার রোল: ${data.user.role}`);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // 🚀 ৩. রোল অনুযায়ী অটোমেটিক ড্যাশবোর্ডে রিডাইরেক্ট করার লজিক
-               setTimeout(() => {
-          if (data.user.role === 'customer') {
-            router.push('/orders');
-          } else if (data.user.role === 'seller') {
-            router.push('/seller/dashboard');
-          } else if (data.user.role === 'rider') {
-            router.push('/rider/dashboard');
-          } else if (data.user.role === 'admin') {
-            router.push('/admin/orders');
-          } else {
-            router.push('/');
-          }
-          router.refresh();
-        }, 1200);
+        const targetRoute = getRedirectPathByRole(data.user.role);
+        router.push(targetRoute);
 
       } else {
         setError(data.error);
