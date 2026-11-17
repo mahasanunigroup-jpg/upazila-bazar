@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { verifyAdmin } from "@/lib/adminAuth";
 import { MANAGEABLE_ROLES } from "@/lib/adminScope";
+import { recordAuditLog } from "@/lib/auditLogger";
 
 export async function PATCH(req, { params }) {
   try {
@@ -59,31 +60,55 @@ export async function PATCH(req, { params }) {
       }
     }
 
-    // ৪. অ্যাকশন প্রয়োগ (জরুরি সেশন আনলকসহ)
+    // অডিট লগের জন্য আগের রোল ও স্ট্যাটাস সংরক্ষণ
+    const oldRole = targetUser.role;
+    let logActionType = "OTHER";
+    let logDescription = "";
+
+    // ৪. অ্যাকশন প্রয়োগ
     if (action === "approve") {
       targetUser.isApproved = true;
       targetUser.isVerified = true;
       targetUser.isBlocked = false;
       targetUser.status = "approved";
+      logActionType = "ROLE_CHANGE";
+      logDescription = `ইউজার "${targetUser.name}" (${oldRole})-এর অ্যাকাউন্ট অনুমোদন (Approve) করা হয়েছে।`;
     } else if (action === "block") {
       targetUser.isBlocked = true;
       targetUser.status = "blocked";
-      targetUser.activeSessionId = ""; // ব্লক করলে সাথে সাথে লগআউটও হয়ে যাবে
+      targetUser.activeSessionId = "";
+      logActionType = "USER_BAN";
+      logDescription = `ইউজার "${targetUser.name}" (${oldRole})-এর অ্যাকাউন্ট ব্লক (Block) করা হয়েছে।`;
     } else if (action === "unblock") {
       targetUser.isBlocked = false;
       targetUser.status = "approved";
+      logActionType = "USER_BAN";
+      logDescription = `ইউজার "${targetUser.name}" (${oldRole})-এর অ্যাকাউন্ট আনব্লক (Unblock) করা হয়েছে।`;
     } else if (action === "unlockSession") {
-      targetUser.activeSessionId = ""; // 🔓 জরুরি প্রয়োজনে ডিভাইস/সেশন লক খোলা
+      targetUser.activeSessionId = "";
+      logActionType = "OTHER";
+      logDescription = `ইউজার "${targetUser.name}" (${oldRole})-এর ডিভাইস সেশন লক খোলা হয়েছে।`;
     } else if (
       action === "changeRole" &&
       (isSuper || allowedRoles.includes(role) || role === "customer")
     ) {
       targetUser.role = role;
+      logActionType = "ROLE_CHANGE";
+      logDescription = `"${targetUser.name}"-এর রোল '${oldRole}' থেকে পরিবর্তন করে '${role}' করা হয়েছে।`;
     } else {
       return NextResponse.json({ message: "অবৈধ অনুরোধ বা অনুমতি নেই" }, { status: 400 });
     }
 
     await targetUser.save();
+
+    // ৫. স্থায়ী অডিট লগ এবং সুপার অ্যাডমিনের কাছে রিয়েল-টাইম নোটিফিকেশন পাঠানো
+    await recordAuditLog({
+      admin,
+      actionType: logActionType,
+      targetId: targetUser._id.toString(),
+      description: logDescription,
+      metadata: { oldRole, newRole: targetUser.role, action },
+    });
 
     return NextResponse.json({
       message: "ইউজারের তথ্য সফলভাবে আপডেট হয়েছে!",

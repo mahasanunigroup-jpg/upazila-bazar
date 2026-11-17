@@ -21,17 +21,23 @@ async function getCurrentUser() {
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ notifications: [], unreadCount: 0 }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ notifications: [], unreadCount: 0 }, { status: 401 });
+    }
 
     await connectDB();
     const userId = user.userId || user.id;
     const isSuper = user.role === "super_admin" || user.role === "admin";
+    const isSellerOrRider = user.role === "seller" || user.role === "rider";
 
+    // রোল অনুযায়ী নিরাপদ ফিল্টারিং
     const roleCondition = isSuper
       ? [{ recipientId: userId }, { recipientRole: "super_admin" }, { recipientRole: "admin" }]
+      : isSellerOrRider
+      ? [{ recipientId: userId }] // শুধুমাত্র নির্দিষ্ট সেলার বা রাইডার তার নিজের নোটিফিকেশন পাবে
       : [{ recipientId: userId }, { recipientRole: user.role, district: user.district || "" }];
 
-    // 👇 শুধুমাত্র isRead: false (নতুন না দেখা) নোটিফিকেশনগুলোই আনবে
+    // শুধুমাত্র isRead: false (নতুন না দেখা) নোটিফিকেশনগুলোই আনবে
     const notifications = await Notification.find({
       isRead: false,
       $or: roleCondition,
@@ -49,6 +55,7 @@ export async function GET() {
       unreadCount: notifications.length,
     });
   } catch (error) {
+    console.error("Notifications GET Error:", error);
     return NextResponse.json({ notifications: [], unreadCount: 0 }, { status: 500 });
   }
 }
@@ -57,7 +64,9 @@ export async function GET() {
 export async function PATCH(req) {
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
     const { notificationId, markAll } = await req.json();
     await connectDB();
@@ -65,8 +74,12 @@ export async function PATCH(req) {
     if (markAll) {
       const userId = user.userId || user.id;
       const isSuper = user.role === "super_admin" || user.role === "admin";
+      const isSellerOrRider = user.role === "seller" || user.role === "rider";
+
       const condition = isSuper
         ? [{ recipientId: userId }, { recipientRole: "super_admin" }, { recipientRole: "admin" }]
+        : isSellerOrRider
+        ? [{ recipientId: userId }]
         : [{ recipientId: userId }, { recipientRole: user.role }];
 
       await Notification.updateMany({ $or: condition }, { $set: { isRead: true } });
@@ -76,6 +89,7 @@ export async function PATCH(req) {
 
     return NextResponse.json({ message: "Cleared" });
   } catch (error) {
+    console.error("Notifications PATCH Error:", error);
     return NextResponse.json({ message: "Error" }, { status: 500 });
   }
 }

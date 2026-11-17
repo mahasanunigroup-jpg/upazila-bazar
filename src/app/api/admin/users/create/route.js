@@ -5,6 +5,7 @@ import User from "@/models/User";
 import { verifyAdmin } from "@/lib/adminAuth";
 import { MANAGEABLE_ROLES } from "@/lib/adminScope";
 import { generateRoleUserId } from "@/lib/generateUserId";
+import { recordAuditLog } from "@/lib/auditLogger";
 
 export async function POST(req) {
   try {
@@ -36,7 +37,7 @@ export async function POST(req) {
       );
     }
 
-    // ৩. কঠোর ফরম্যাট ভ্যালিডেশন (সংখ্যা, অক্ষর, ইমেইল ও NID চেক)
+    // ৩. কঠোর ফরম্যাট ভ্যালিডেশন
     const bdPhoneRegex = /^01[3-9]\d{8}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     const nidRegex = /^(\d{10}|\d{13}|\d{17})$/;
@@ -126,7 +127,7 @@ export async function POST(req) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ৬. রোল অনুযায়ী কেবল প্রয়োজনীয় স্তরের লোকেশন সেভ করা
+    // ৬. রোল অনুযায়ী লোকেশন সেভ করা
     const finalDivision = division || admin.division || "";
     const finalDistrict =
       role === "division_admin" ? "" : district || admin.district || "";
@@ -141,10 +142,10 @@ export async function POST(req) {
       ? ""
       : union || admin.union || "";
 
-    // ৭. রোল অনুযায়ী ইউনিক অফিশিয়াল আইডি তৈরি
+    // ৭. ইউনিক অফিশিয়াল আইডি তৈরি
     const generatedCustomId = generateRoleUserId(role);
 
-    // ৮. ডাটাবেজে বায়োডাটাসহ নতুন অ্যাকাউন্ট তৈরি
+    // ৮. ডাটাবেজে নতুন অ্যাকাউন্ট তৈরি
     const newUser = await User.create({
       customId: generatedCustomId,
       name: name.trim(),
@@ -174,6 +175,15 @@ export async function POST(req) {
       isApproved: true,
       isBlocked: false,
       status: "active",
+    });
+
+    // ৯. অডিট লগ এবং সুপার অ্যাডমিন নোটিফিকেশন সেভ করা
+    await recordAuditLog({
+      admin,
+      actionType: "ROLE_CHANGE",
+      targetId: newUser._id.toString(),
+      description: `নতুন অ্যাকাউন্ট (${newUser.name}) তৈরি করা হয়েছে এবং রোল '${role}' দেওয়া হয়েছে।`,
+      metadata: { customId: newUser.customId, newRole: role },
     });
 
     return NextResponse.json(

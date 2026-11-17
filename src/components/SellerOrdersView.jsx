@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import SellerStatusSelect from "./SellerStatusSelect";
 import SellerRiderSelect from "./SellerRiderSelect";
+import UniversalPrintButtons from "@/components/invoice/UniversalPrintButtons";
 import {
   ShoppingBag,
   CheckCircle2,
@@ -175,6 +176,7 @@ export default function SellerOrdersView({ orders, riders }) {
           </div>
         </div>
       </div>
+
       {/* আগের ৩টি ফাস্ট ফিল্টার ট্যাব + রাইডার সংখ্যা */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex flex-wrap gap-2">
@@ -216,7 +218,6 @@ export default function SellerOrdersView({ orders, riders }) {
           সক্রিয় রাইডার: {riders.length} জন
         </div>
       </div>
-
       {/* অর্ডার লিস্ট (আগের ডিজাইন হুবহু রাখা হয়েছে) */}
       {displayedOrders.length === 0 ? (
         <div className="bg-white p-10 rounded-xl text-center border border-gray-100 shadow-sm">
@@ -255,7 +256,7 @@ export default function SellerOrdersView({ orders, riders }) {
                   </span>
                 </div>
 
-                {/* অ্যাকশন বাটনসমূহ */}
+                {/* অ্যাকশন বাটনসমূহ + এক ক্লিকে প্রিন্ট বাটন */}
                 <div className="flex flex-wrap items-center gap-3">
                   <SellerStatusSelect
                     orderId={order._id}
@@ -277,21 +278,8 @@ export default function SellerOrdersView({ orders, riders }) {
                     বিল: ৳{order.myTotal}
                   </span>
 
-                  {/* যেখানে <SellerRiderSelect ... /> আছে তার প্যারেন্ট </div> শেষ হওয়ার ঠিক নিচে */}
-                                {/* কার্ডের একদম নিচে ফুল-উইডথ রেটিং ফুটার বার */}
-              {order.feedback && (
-                <div className="bg-amber-50/90 border-t border-amber-200 px-5 py-3 text-xs flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-bold text-amber-800 flex items-center gap-1.5">
-                    ⭐ কাস্টমার রেটিং: {order.feedback.sellerRating} / 5
-                  </span>
-                  {order.feedback.sellerComment && (
-                    <span className="text-gray-700 italic">
-                      "{order.feedback.sellerComment}"
-                    </span>
-                  )}
-                </div>
-              )}
-
+                  {/* সেলার ইনভয়েস ও POS প্রিন্ট বাটন */}
+                  <UniversalPrintButtons order={order} role="seller" />
                 </div>
               </div>
 
@@ -337,6 +325,20 @@ export default function SellerOrdersView({ orders, riders }) {
                   </tbody>
                 </table>
               </div>
+
+              {/* কার্ডের একদম নিচে ফুল-উইডথ রেটিং ফুটার বার */}
+              {order.feedback && (
+                <div className="bg-amber-50/90 border-t border-amber-200 px-5 py-3 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-amber-800 flex items-center gap-1.5">
+                    ⭐ কাস্টমার রেটিং: {order.feedback.sellerRating} / 5
+                  </span>
+                  {order.feedback.sellerComment && (
+                    <span className="text-gray-700 italic">
+                      "{order.feedback.sellerComment}"
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -9,8 +9,6 @@ import ImpersonateBanner from "@/components/admin/ImpersonateBanner";
 import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
 import NotificationBell from "@/components/NotificationBell";
 
-
-
 const ROLE_LABELS = {
   super_admin: "সুপার অ্যাডমিন",
   division_admin: "বিভাগীয় অ্যাডমিন",
@@ -39,18 +37,18 @@ async function ProtectedAdminWrapper({ children }) {
         <div className="p-5 border-b border-slate-800 flex items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-bold text-emerald-400">
-            🛡️ {ROLE_LABELS[admin.role] || "অ্যাডমিন প্যানেল"}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">লগইন: {admin.name}</p>
-          {(admin.division ||
-            admin.district ||
-            admin.upazila ||
-            admin.union) && (
-            <p className="text-xs text-emerald-400/90 mt-0.5">
-              এলাকা:{" "}
-              {admin.union || admin.upazila || admin.district || admin.division}
-            </p>
-          )}
+              🛡️ {ROLE_LABELS[admin.role] || "অ্যাডমিন প্যানেল"}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">লগইন: {admin.name}</p>
+            {(admin.division ||
+              admin.district ||
+              admin.upazila ||
+              admin.union) && (
+              <p className="text-xs text-emerald-400/90 mt-0.5">
+                এলাকা:{" "}
+                {admin.union || admin.upazila || admin.district || admin.division}
+              </p>
+            )}
           </div>
           {/* 🔔 নোটিফিকেশন বেল */}
           <NotificationBell />
@@ -84,6 +82,7 @@ async function ProtectedAdminWrapper({ children }) {
           >
             🛍️ পণ্য মডারেশন
           </Link>
+
           <Link
             href="/admin/finance"
             className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
@@ -93,6 +92,13 @@ async function ProtectedAdminWrapper({ children }) {
 
           {isSuper && (
             <>
+              <Link
+                href="/admin/audit-logs"
+                className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
+              >
+                🕵️ অ্যাক্টিভিটি ও অডিট লগ
+              </Link>
+
               <Link
                 href="/admin/settings"
                 className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
@@ -114,7 +120,6 @@ async function ProtectedAdminWrapper({ children }) {
         </nav>
       </aside>
 
-      {/* মেইন কন্টেন্ট এরিয়া */}
       {/* মেইন কন্টেন্ট এরিয়া (সব ডিভাইসের জন্য রেসপনসিভ ফিক্স) */}
       <main className="flex-1 min-w-0 w-full p-3 sm:p-5 md:p-8 max-w-7xl mx-auto overflow-x-hidden">
         {isImpersonating && (

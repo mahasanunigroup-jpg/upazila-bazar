@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   ChevronDown,
   ChevronUp,
@@ -9,6 +10,7 @@ import {
   MapPin,
   Star,
   CheckCircle2,
+  FileText,
 } from "lucide-react";
 
 const STAR_LIST = Array.from({ length: 5 }, (_, i) => i + 1);
@@ -28,7 +30,7 @@ export default function OrdersPage() {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const res = await fetch("/api/orders",{ cache: "no-store" });
+        const res = await fetch("/api/orders", { cache: "no-store" });
         const data = await res.json();
         if (data.success) setOrders(data.orders);
       } catch (error) {
@@ -63,7 +65,7 @@ export default function OrdersPage() {
     }
   };
 
-   const handleFeedbackSubmit = async (orderId) => {
+  const handleFeedbackSubmit = async (orderId) => {
     setSubmitting(true);
     try {
       const res = await fetch("/api/orders/feedback", {
@@ -82,7 +84,6 @@ export default function OrdersPage() {
       if (!res.ok) {
         alert(data.error || "ফিডব্যাক পাঠানো যায়নি!");
       } else {
-        // সরাসরি নিশ্চিত ডাটা দিয়ে স্টেট আপডেট করা
         const savedFeedback = data.feedback || {
           isSubmitted: true,
           sellerRating: Number(sellerRating),
@@ -108,13 +109,15 @@ export default function OrdersPage() {
 
   if (loading)
     return (
-      <div className="text-center p-12 text-emerald-600 animate-pulse">
-        লোড হচ্ছে...
+      <div className="max-w-4xl mx-auto py-8 px-4 space-y-4 animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-64"></div>
+        <div className="h-64 bg-white rounded-xl border p-6"></div>
+        <div className="h-64 bg-white rounded-xl border p-6"></div>
       </div>
     );
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800">
         আমার অর্ডার সমূহ (উপজেলা বাজার)
       </h1>
       {orders.map((order) => {
@@ -126,7 +129,7 @@ export default function OrdersPage() {
         return (
           <div
             key={order.id}
-            className="bg-white rounded-xl shadow-sm border p-6 mb-6"
+            className="bg-white rounded-xl shadow-sm border p-4 sm:p-6 mb-6"
           >
             <div className="flex justify-between border-b pb-4 mb-6 text-sm text-gray-600">
               <div>
@@ -137,7 +140,7 @@ export default function OrdersPage() {
               </div>
               <div className="text-right">
                 <p>অর্ডারের তারিখ</p>
-                <p className="font-medium text-gray-800 text-base">
+                <p className="font-medium text-gray-800 text-sm sm:text-base">
                   {order.date}
                 </p>
               </div>
@@ -166,7 +169,7 @@ export default function OrdersPage() {
                     >
                       {idx + 1}
                     </div>
-                    <p className="text-xs mt-2 font-medium text-gray-600">
+                    <p className="text-[11px] sm:text-xs mt-2 font-medium text-gray-600">
                       {label}
                     </p>
                   </div>
@@ -204,7 +207,8 @@ export default function OrdersPage() {
                 </div>
               </div>
             </div>
-            {/* রাইডার ও সেলার বিস্তারিত + ফিডব্যাক সেকশন */}
+
+            {/* রাইডার ও সেলার বিস্তারিত + রেটিং + ইনভয়েস বাটন সেকশন */}
             <div className="mt-4 pt-3 border-t border-gray-100 space-y-3">
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
@@ -223,7 +227,7 @@ export default function OrdersPage() {
                   )}
                 </button>
 
-                {isDelivered && !hasFeedback && (
+                {!hasFeedback && (
                   <button
                     onClick={() => openRatingForm(order.id)}
                     className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 py-2.5 px-4 rounded-lg transition cursor-pointer"
@@ -234,8 +238,17 @@ export default function OrdersPage() {
                       : "সেলার ও রাইডারকে রেটিং দিন"}
                   </button>
                 )}
-              </div>
 
+                {/* অফিশিয়াল ইনভয়েস ডাউনলোড বাটন */}
+                <Link
+                  href={`/invoice/${order._id || order.id}`}
+                  target="_blank"
+                  className="flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 py-2.5 px-4 rounded-lg transition shadow-xs whitespace-nowrap"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>অফিশিয়াল ইনভয়েস</span>
+                </Link>
+              </div>
               {hasFeedback && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-800">
                   <span className="font-semibold flex items-center gap-1.5">
@@ -332,7 +345,10 @@ export default function OrdersPage() {
                   </div>
                 </div>
               )}
+
               {/* ক্লিক করলে নিচে রাইডার ও সেলারের তথ্য দেখাবে */}
+                           {/* ক্লিক করলে নিচে রাইডার ও সেলারের তথ্য দেখাবে */}
+                        {/* ক্লিক করলে নিচে রাইডার ও সেলারের তথ্য দেখাবে */}
               {isExpanded && (
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-emerald-50/30 p-4 rounded-xl border border-emerald-100">
                   <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-xs">
@@ -369,7 +385,7 @@ export default function OrdersPage() {
                         )}
                       </div>
                     ) : (
-                      <p className="text-amber-600 font-medium">
+                      <p className="text-amber-700">
                         এখনো কোনো রাইডার অ্যাসাইন করা হয়নি।
                       </p>
                     )}
@@ -385,20 +401,35 @@ export default function OrdersPage() {
                         <span className="font-semibold text-gray-800">
                           দোকান:
                         </span>{" "}
-                        {order.shops
-                          ? order.shops.join(", ")
-                          : "উপজেলা ভেরিফায়েড স্টোর"}
+                        {order.shopNames ||
+                          [
+                            ...new Set(
+                              (order.items || [])
+                                .map((i) => i.shopName)
+                                .filter(Boolean)
+                            ),
+                          ].join(", ") ||
+                          "উপজেলা ভেরিফায়েড স্টোর"}
                       </p>
                       <p className="flex items-start gap-1">
                         <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                         <span>
-                          {order.customerAddress || "ঠিকানা দেওয়া নেই"}
+                          {order.address ||
+                            [
+                              order.customer_address,
+                              order.upazila,
+                              order.district,
+                            ]
+                              .filter(Boolean)
+                              .join(", ") ||
+                            "ঠিকানা উল্লেখ নেই"}
                         </span>
                       </p>
                     </div>
                   </div>
                 </div>
               )}
+
             </div>
           </div>
         );

@@ -39,6 +39,7 @@ async function getSellerDashboardData() {
         return {
           _id: item._id ? item._id.toString() : `item_${idx}`,
           name: item.name || item.title || item.productName || "পণ্য #" + (idx + 1),
+          shopName: item.shopName || "উপজেলা ভেরিফায়েড স্টোর",
           qty: itemQty,
           price: itemPrice,
           itemStatus: item.itemStatus || order.status || "pending",
@@ -47,18 +48,18 @@ async function getSellerDashboardData() {
 
       const riderIdStr = order.riderId ? order.riderId.toString() : "";
 
-      // রাইডার অ্যাসাইন করা থাকলে স্ট্যাটাস সিঙ্ক রাখা
       let effectiveDeliveryStatus = order.deliveryStatus || "unassigned";
       if (riderIdStr && effectiveDeliveryStatus === "unassigned") {
         effectiveDeliveryStatus = "assigned";
       }
 
+      const firstItem = formattedItems.length > 0 ? formattedItems.at(0) : null;
       const orderPackingStatus =
         effectiveDeliveryStatus === "delivered"
           ? "delivered"
           : order.status === "cancelled"
           ? "cancelled"
-          : formattedItems?.itemStatus || "pending";
+          : firstItem?.itemStatus || "pending";
 
       return {
         _id: order._id.toString(),
@@ -68,13 +69,17 @@ async function getSellerDashboardData() {
         district: order.district || "",
         upazila: order.upazila || "",
         customer_address: order.customer_address || order.address || "",
+        payment_method: order.payment_method || "Cash on Delivery",
+        delivery_charge: Number(order.delivery_charge || 0),
+        commissionRate: Number(order.commissionRate || 5),
         deliveryStatus: effectiveDeliveryStatus,
         riderId: riderIdStr,
         createdAt: order.createdAt ? order.createdAt.toISOString() : new Date().toISOString(),
         myItems: formattedItems,
+        items: formattedItems, // প্রিন্ট বাটনের জন্য সেলারের নিজস্ব আইটেম
         myTotal,
+        total_amount: myTotal, // প্রিন্ট বাটনের জন্য সেলারের মোট বিল
         orderPackingStatus,
-        // নতুন যুক্ত করা হলো: কাস্টমারের দেওয়া সেলার রেটিং ও মন্তব্য
         feedback:
           order.feedback && (order.feedback.isSubmitted || order.feedback.sellerRating)
             ? {

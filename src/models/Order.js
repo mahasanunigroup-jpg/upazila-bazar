@@ -8,7 +8,7 @@ const OrderItemSchema = new mongoose.Schema({
   },
   name: { type: String, required: true },
   qty: { type: Number, required: true },
-  price: { type: Number, required: true }, // হিসাবের সুবিধার জন্য Number করা হয়েছে
+  price: { type: Number, required: true }, // পণ্যের একক মূল্য
   sellerId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: "User", 
@@ -34,10 +34,21 @@ const OrderSchema = new mongoose.Schema(
     customer_phone: { type: String, required: true },
     district: { type: String, required: true }, // রাইডার ফিল্টার করার জন্য
     upazila: { type: String, required: true },  // রাইডার ফিল্টার করার জন্য
+    union: { type: String, default: "" },       // নিচের ইনডেক্সের সাথে মিল রাখার জন্য যুক্ত করা হলো
     customer_address: { type: String, required: true },
     
+    // টাকার হিসাব ও ইনভয়েস ফিল্ডসমূহ
+    delivery_charge: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    commissionRate: { type: Number, default: 5 }, // সেলার ইনভয়েসের জন্য প্ল্যাটফর্ম কমিশন (%)
     total_amount: { type: Number, required: true },
+    
     payment_method: { type: String, default: "Cash on Delivery" },
+    paymentStatus: { 
+      type: String, 
+      enum: ["Unpaid", "Paid"], 
+      default: "Unpaid" 
+    },
     
     // পুরো অর্ডারের ওভারঅল স্ট্যাটাস
     status: {
@@ -46,7 +57,7 @@ const OrderSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    // রাইডার ম্যানেজমেন্টের জন্য নতুন ফিল্ড
+    // রাইডার ম্যানেজমেন্টের জন্য ফিল্ড
     riderId: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: "User", 
@@ -58,7 +69,7 @@ const OrderSchema = new mongoose.Schema(
       default: "unassigned",
     },
 
-    // কাস্টমারের সেলার ও রাইডার ফিডব্যাক (নতুন যুক্ত করা হলো)
+    // কাস্টমারের সেলার ও রাইডার ফিডব্যাক
     feedback: {
       isSubmitted: { type: Boolean, default: false },
       sellerRating: { type: Number, min: 1, max: 5, default: null },

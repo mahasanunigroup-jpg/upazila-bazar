@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import UniversalPrintButtons from "@/components/invoice/UniversalPrintButtons";
 
 export default function RiderOrdersView({ orders = [] }) {
   const router = useRouter();
@@ -95,7 +96,7 @@ export default function RiderOrdersView({ orders = [] }) {
 
   return (
     <div className="space-y-6">
-      {/* ১. টপ হেডার ও তারিখ ফিল্টার (সেলার ড্যাশবোর্ডের মতো) */}
+      {/* ১. টপ হেডার ও তারিখ ফিল্টার */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
@@ -182,6 +183,7 @@ export default function RiderOrdersView({ orders = [] }) {
           </div>
         </div>
       </div>
+
       {/* ৩. ট্যাব বাটনসমূহ */}
       <div className="flex items-center gap-3">
         <button
@@ -206,7 +208,6 @@ export default function RiderOrdersView({ orders = [] }) {
           সম্পন্ন ডেলিভারি ও আয়ের বিবরণ ({completedOrders.length})
         </button>
       </div>
-
       {/* ৪. অর্ডার ও আয়ের তালিকা */}
       {displayedOrders.length === 0 ? (
         <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center">
@@ -218,7 +219,6 @@ export default function RiderOrdersView({ orders = [] }) {
         <div className="grid grid-cols-1 gap-4">
           {displayedOrders.map((order) => {
             const badge = getStatusBadge(order.deliveryStatus);
-            // অর্ডারের সেলারদের ইউনিক নাম বের করা
             const sellerNames = [
               ...new Set(order.items.map((i) => i.shopName).filter(Boolean)),
             ].join(", ");
@@ -322,35 +322,41 @@ export default function RiderOrdersView({ orders = [] }) {
                   </div>
                 </div>
 
-                {/* অ্যাকশন বাটন */}
-                {activeTab === "active" && (
-                  <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3">
-                    {(order.deliveryStatus || "").toLowerCase() === "assigned" && (
-                      <button
-                        disabled={loadingId === order._id}
-                        onClick={() => handleStatusUpdate(order._id, "picked_up")}
-                        className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-                      >
-                        {loadingId === order._id ? "আপডেট হচ্ছে..." : "📦 পার্সেল পিকআপ করেছি"}
-                      </button>
-                    )}
+                {/* অ্যাকশন বাটন + মিনি প্রিন্টার (POS) প্রিন্ট বাটন */}
+                <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3">
+                  {/* এক ক্লিকে মিনি প্রিন্টার রিসিপ্ট বাটন */}
+                  <UniversalPrintButtons order={order} role="rider" />
 
-                    {["picked_up", "on_the_way"].includes(
-                      (order.deliveryStatus || "").toLowerCase()
-                    ) && (
-                      <button
-                        disabled={loadingId === order._id}
-                        onClick={() => handleStatusUpdate(order._id, "delivered")}
-                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-                      >
-                        {loadingId === order._id
-                          ? "আপডেট হচ্ছে..."
-                          : "✅ ডেলিভারি সম্পন্ন হয়েছে"}
-                      </button>
-                    )}
-                  </div>
-                )}
-                 {order.feedback && (
+                  {activeTab === "active" && (
+                    <>
+                      {(order.deliveryStatus || "").toLowerCase() === "assigned" && (
+                        <button
+                          disabled={loadingId === order._id}
+                          onClick={() => handleStatusUpdate(order._id, "picked_up")}
+                          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition cursor-pointer"
+                        >
+                          {loadingId === order._id ? "আপডেট হচ্ছে..." : "📦 পার্সেল পিকআপ করেছি"}
+                        </button>
+                      )}
+
+                      {["picked_up", "on_the_way"].includes(
+                        (order.deliveryStatus || "").toLowerCase()
+                      ) && (
+                        <button
+                          disabled={loadingId === order._id}
+                          onClick={() => handleStatusUpdate(order._id, "delivered")}
+                          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition cursor-pointer"
+                        >
+                          {loadingId === order._id
+                            ? "আপডেট হচ্ছে..."
+                            : "✅ ডেলিভারি সম্পন্ন হয়েছে"}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {order.feedback && (
                   <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs flex flex-wrap items-center justify-between gap-2">
                     <span className="font-bold text-amber-800">
                       ⭐ কাস্টমার রেটিং: {order.feedback.riderRating} / 5
@@ -362,7 +368,6 @@ export default function RiderOrdersView({ orders = [] }) {
                     )}
                   </div>
                 )}
-
               </div>
             );
           })}

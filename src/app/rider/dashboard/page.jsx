@@ -24,44 +24,48 @@ async function getRiderOrders() {
       .limit(100)
       .lean();
 
-    return rawOrders.map((o) => ({
-      _id: o._id.toString(),
-      orderId: o.orderId || o._id.toString().slice(-6).toUpperCase(),
-      customer_name: o.customer_name || o.customerName || "সম্মানিত ক্রেতা",
-      customer_phone: o.customer_phone || o.customerPhone || "",
-      district: o.district || "",
-      upazila: o.upazila || "",
-      customer_address: o.customer_address || o.address || "",
-      total_amount: Number(o.total_amount || o.totalAmount || 0),
-      // ডেলিভারি চার্জ থেকে রাইডারের আয় (ডাটাবেজে চার্জ না থাকলে ডিফল্ট ৫০ টাকা)
-      rider_earning: Number(
+    return rawOrders.map((o) => {
+      const deliveryCharge = Number(
         o.deliveryCharge || o.delivery_charge || o.shippingCost || 50
-      ),
-      deliveryStatus: o.deliveryStatus || "assigned",
-      deliveryDateRaw: (o.updatedAt || o.createdAt || new Date()).toISOString(),
-      deliveryDateFormatted: new Date(
-        o.updatedAt || o.createdAt || new Date()
-      ).toLocaleDateString("bn-BD", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-      // কাস্টমারের দেওয়া রাইডার রেটিং ও মন্তব্য
-      feedback:
-        o.feedback && (o.feedback.isSubmitted || o.feedback.riderRating)
-          ? {
-              riderRating: Number(o.feedback.riderRating),
-              riderComment: o.feedback.riderComment || "",
-            }
-          : null,
-      items: (o.items || []).map((i, idx) => ({
-        _id: i._id ? i._id.toString() : `item_${idx}`,
-        name: i.name || i.title || "পণ্য",
-        qty: Number(i.qty || i.quantity || 1),
-        price: Number(i.price || 0),
-        shopName: i.shopName || "উপজেলা স্টোর",
-      })),
-    }));
+      );
+
+      return {
+        _id: o._id.toString(),
+        orderId: o.orderId || o._id.toString().slice(-6).toUpperCase(),
+        customer_name: o.customer_name || o.customerName || "সম্মানিত ক্রেতা",
+        customer_phone: o.customer_phone || o.customerPhone || "",
+        district: o.district || "",
+        upazila: o.upazila || "",
+        customer_address: o.customer_address || o.address || "",
+        payment_method: o.payment_method || "Cash on Delivery",
+        delivery_charge: deliveryCharge,
+        total_amount: Number(o.total_amount || o.totalAmount || 0),
+        rider_earning: deliveryCharge,
+        deliveryStatus: o.deliveryStatus || "assigned",
+        deliveryDateRaw: (o.updatedAt || o.createdAt || new Date()).toISOString(),
+        deliveryDateFormatted: new Date(
+          o.updatedAt || o.createdAt || new Date()
+        ).toLocaleDateString("bn-BD", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+        feedback:
+          o.feedback && (o.feedback.isSubmitted || o.feedback.riderRating)
+            ? {
+                riderRating: Number(o.feedback.riderRating),
+                riderComment: o.feedback.riderComment || "",
+              }
+            : null,
+        items: (o.items || []).map((i, idx) => ({
+          _id: i._id ? i._id.toString() : `item_${idx}`,
+          name: i.name || i.title || "পণ্য",
+          qty: Number(i.qty || i.quantity || 1),
+          price: Number(i.price || 0),
+          shopName: i.shopName || "উপজেলা স্টোর",
+        })),
+      };
+    });
   } catch (error) {
     console.error("Rider Dashboard Error:", error);
     return [];

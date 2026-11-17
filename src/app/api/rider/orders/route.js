@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import connectDB from "@/lib/db";
 import Order from "@/models/Order";
+import { recordAuditLog } from "@/lib/auditLogger";
 
 async function verifyRider() {
   try {
@@ -31,9 +32,15 @@ export async function PATCH(req) {
 
     await connectDB();
 
+    const order = await Order.findOne({ _id: orderId, riderId: riderId }).lean();
+    if (!order) {
+      return NextResponse.json({ error: "অর্ডারটি পাওয়া যায়নি" }, { status: 404 });
+    }
+
     const updateData = { deliveryStatus };
     if (deliveryStatus === "delivered") {
       updateData.status = "delivered";
+      updateData.paymentStatus = "Paid";
     }
 
     await Order.updateOne(
@@ -41,7 +48,19 @@ export async function PATCH(req) {
       { $set: updateData }
     );
 
-    return NextResponse.json({ success: true, message: "ডেলিভারি স্ট্যাটাস আপডেট হয়েছে" }, { status: 200 });
+    // অডিট লগে রাইডারের স্ট্যাটাস পরিবর্তনের রেকর্ড সেভ করা
+    await recordAuditLog({
+      admin: rider,
+      actionType: "ORDER_STATUS",
+      targetId: order.orderId || orderId,
+      description: `রাইডার (${rider.name || "Rider"}) অর্ডার #${order.orderId || orderId}-এর ডেলিভারি স্ট্যাটাস '${deliveryStatus}' করেছেন।`,
+      metadata: { oldStatus: order.deliveryStatus, newStatus: deliveryStatus },
+    });
+
+    return NextResponse.json(
+      { success: true, message: "ডেলিভারি স্ট্যাটাস আপডেট হয়েছে" },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Rider Update Error:", error);
     return NextResponse.json({ error: "আপডেট করতে সমস্যা হয়েছে" }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Order from "@/models/Order";
+import Notification from "@/models/Notification";
 
 export async function POST(req) {
   try {
@@ -17,6 +18,16 @@ export async function POST(req) {
 
     const cleanOrderId = orderId.toString().trim();
 
+    // ১. অর্ডারটি খুঁজে বের করা
+    const order = await Order.findOne({ orderId: cleanOrderId }).lean();
+
+    if (!order) {
+      return NextResponse.json(
+        { error: `অর্ডার আইডি (${cleanOrderId}) ডাটাবেজে পাওয়া যায়নি` },
+        { status: 404 }
+      );
+    }
+
     const feedbackData = {
       isSubmitted: true,
       sellerRating: Number(sellerRating),
@@ -26,17 +37,55 @@ export async function POST(req) {
       submittedAt: new Date(),
     };
 
-    // সরাসরি MongoDB কালেকশনে আপডেট করা (যাতে Mongoose ক্যাশ কোনো বাধা না দেয়)
-    const result = await Order.collection.updateOne(
+    // ২. অর্ডারে ফিডব্যাক সেভ করা
+    await Order.collection.updateOne(
       { orderId: cleanOrderId },
       { $set: { feedback: feedbackData } }
     );
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { error: `অর্ডার আইডি (${cleanOrderId}) ডাটাবেজে পাওয়া যায়নি` },
-        { status: 404 }
-      );
+    // ৩. আপনার Notification স্কিমা অনুযায়ী সেলার ও রাইডারের জন্য নোটিফিকেশন তৈরি
+    const notificationsToCreate = [];
+
+    const uniqueSellerIds = [
+      ...new Set(
+        (order.items || [])
+          .map((item) => item.sellerId?.toString())
+          .filter(Boolean)
+      ),
+    ];
+
+    uniqueSellerIds.forEach((sId) => {
+      notificationsToCreate.push({
+        recipientRole: "seller",
+        recipientId: sId,
+        district: order.district || "",
+        upazila: order.upazila || "",
+        title: `⭐ নতুন কাস্টমার রিভিউ (${sellerRating}★)`,
+        message: `অর্ডার #${cleanOrderId}-এ কাস্টমার আপনাকে ${sellerRating} স্টার রেটিং দিয়েছেন${
+          sellerComment ? `: "${sellerComment}"` : "।"
+        }`,
+        link: "/seller/orders",
+        isRead: false,
+      });
+    });
+
+    if (order.riderId) {
+      notificationsToCreate.push({
+        recipientRole: "rider",
+        recipientId: order.riderId.toString(),
+        district: order.district || "",
+        upazila: order.upazila || "",
+        title: `⭐ ডেলিভারি রিভিউ (${riderRating}★)`,
+        message: `অর্ডার #${cleanOrderId}-এর ডেলিভারিতে কাস্টমার আপনাকে ${riderRating} স্টার রেটিং দিয়েছেন${
+          riderComment ? `: "${riderComment}"` : "।"
+        }`,
+        link: "/rider/dashboard",
+        isRead: false,
+      });
+    }
+
+    if (notificationsToCreate.length > 0) {
+      await Notification.insertMany(notificationsToCreate);
     }
 
     return NextResponse.json({
