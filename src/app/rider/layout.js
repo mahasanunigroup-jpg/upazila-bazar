@@ -18,6 +18,23 @@ export default function RiderLayout({ children }) {
             </Link>
           </div>
 
+          {/* রাইডার নেভবার মেনু */}
+          <nav className="flex items-center gap-2 overflow-x-auto">
+            <Link
+              href="/rider/dashboard"
+              className="whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition"
+            >
+              ড্যাশবোর্ড
+            </Link>
+
+            <Link
+              href="/rider/cash-handover"
+              className="whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition"
+            >
+              ক্যাশ হ্যান্ডওভার
+            </Link>
+          </nav>
+
           <div className="flex items-center gap-3">
             <Link
               href="/"

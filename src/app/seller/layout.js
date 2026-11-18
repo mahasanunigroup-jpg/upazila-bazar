@@ -12,6 +12,7 @@ export default function SellerLayout({ children }) {
     { name: "আমার পণ্য", href: "/seller/products" },
     { name: "নতুন পণ্য যোগ", href: "/seller/add-product" },
     { name: "আয় ও কমিশন", href: "/seller/earnings" },
+     { name: 'ওয়ালেট ও পেআউট', href: '/seller/wallet' },
   ];
 
   return (

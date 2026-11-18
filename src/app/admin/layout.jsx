@@ -1,3 +1,4 @@
+// src/app/admin/layout.jsx
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -32,7 +33,7 @@ async function ProtectedAdminWrapper({ children }) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-      {/* সাইডবার নেভিগেশন (আপনার অরিজিনাল ডিজাইন) */}
+      {/* সাইডবার নেভিগেশন */}
       <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0">
         <div className="p-5 border-b border-slate-800 flex items-center justify-between gap-2">
           <div>
@@ -46,7 +47,10 @@ async function ProtectedAdminWrapper({ children }) {
               admin.union) && (
               <p className="text-xs text-emerald-400/90 mt-0.5">
                 এলাকা:{" "}
-                {admin.union || admin.upazila || admin.district || admin.division}
+                {admin.union ||
+                  admin.upazila ||
+                  admin.district ||
+                  admin.division}
               </p>
             )}
           </div>
@@ -90,13 +94,34 @@ async function ProtectedAdminWrapper({ children }) {
             💰 আয় ও কমিশন হিসাব
           </Link>
 
+          {/* নতুন যুক্ত করা পেআউট রিকোয়েস্ট মেনু */}
+
+          <Link
+            href="/admin/rider-cash"
+            className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
+          >
+            🛵 রাইডার ক্যাশ গ্রহণ
+          </Link>
+
           {isSuper && (
             <>
+              <Link
+                href="/admin/withdrawals"
+                className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
+              >
+                💸 পেআউট রিকোয়েস্ট
+              </Link>
               <Link
                 href="/admin/audit-logs"
                 className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
               >
                 🕵️ অ্যাক্টিভিটি ও অডিট লগ
+              </Link>
+              <Link
+                href="/admin/transactions"
+                className="px-3.5 py-2.5 rounded-lg hover:bg-slate-800 transition whitespace-nowrap"
+              >
+                📑 মাস্টার লেনদেন লেজার
               </Link>
 
               <Link
@@ -120,7 +145,7 @@ async function ProtectedAdminWrapper({ children }) {
         </nav>
       </aside>
 
-      {/* মেইন কন্টেন্ট এরিয়া (সব ডিভাইসের জন্য রেসপনসিভ ফিক্স) */}
+      {/* মেইন কন্টেন্ট এরিয়া */}
       <main className="flex-1 min-w-0 w-full p-3 sm:p-5 md:p-8 max-w-7xl mx-auto overflow-x-hidden">
         {isImpersonating && (
           <ImpersonateBanner targetName={admin.name} targetRole={admin.role} />
