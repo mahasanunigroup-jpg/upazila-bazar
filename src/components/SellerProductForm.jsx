@@ -1,88 +1,273 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BD_LOCATIONS } from "@/data/bdLocations";
-import { PlusCircle, Image, Loader2, CheckCircle, Store } from "lucide-react";
+import { getCategoryRules } from "@/data/productOptions";
+import { PlusCircle, Loader2, CheckCircle, Store, Plus } from "lucide-react";
 import { optimizeImageFile } from "@/lib/optimizeImage";
+import ProductItemCard from "@/components/ProductItemCard";
 
+const EMPTY_PRODUCT = {
+  title: "",
+  description: "",
+  price: "",
+  discountPrice: "",
+  unit: "কেজি (kg)",
+  packagingType: "📦 প্যাকেটজাত",
+  category: "",
+  smartField1: "",
+  smartField2: "",
+  prescriptionRequired: false,
+  isCustomCategory: false,
+  imageFile: null,
+  existingImage: "",
+};
 
 export default function SellerProductForm() {
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [success, setSuccess] = useState("");
-  const [imageFile, setImageFile] = useState(null);
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    price: "",
-    category: "",
-    stock: "",
+  const [suggestions, setSuggestions] = useState([]);
+  const [extraCategories, setExtraCategories] = useState([]);
+
+  const [sellerInfo, setSellerInfo] = useState({
+    sellerId: "",
     shopName: "",
     sellerName: "",
     district: "কিশোরগঞ্জ",
     upazila: "ভৈরব",
     union: "",
+    moholla: "",
   });
+
+  const [items, setItems] = useState([{ ...EMPTY_PRODUCT }]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const storedUser = JSON.parse(
+          localStorage.getItem("upazila_user") || localStorage.getItem("user") || "null"
+        );
+        const storedLoc = JSON.parse(
+          localStorage.getItem("upazila_full_location") || "null"
+        );
+
+        if (storedUser || storedLoc) {
+          setSellerInfo((prev) => ({
+            ...prev,
+            sellerId: storedUser?._id || storedUser?.id || prev.sellerId,
+            shopName: storedUser?.shopName || prev.shopName,
+            sellerName: storedUser?.name || prev.sellerName,
+            district: storedUser?.district || storedLoc?.district || prev.district,
+            upazila: storedUser?.upazila || storedLoc?.upazila || prev.upazila,
+            union: storedUser?.union || storedLoc?.union || prev.union,
+            moholla:
+              storedUser?.marketName ||
+              storedUser?.moholla ||
+              storedLoc?.moholla ||
+              prev.moholla,
+          }));
+        }
+
+        const [meRes, sugRes] = await Promise.all([
+          fetch("/api/auth/me"),
+          fetch("/api/products/suggestions"),
+        ]);
+
+        if (meRes.ok) {
+          const data = await meRes.json();
+          const u = data.user || data;
+          if (u && (u.name || u.shopName)) {
+            setSellerInfo((prev) => ({
+              ...prev,
+              sellerId: u._id || u.id || prev.sellerId,
+              shopName: u.shopName || prev.shopName,
+              sellerName: u.name || prev.sellerName,
+              district: u.district || prev.district,
+              upazila: u.upazila || prev.upazila,
+              union: u.union || prev.union,
+              moholla: u.marketName || u.moholla || prev.moholla,
+            }));
+          }
+        }
+
+        if (sugRes.ok) {
+          const sugData = await sugRes.json();
+          setSuggestions(sugData.suggestions || []);
+          setExtraCategories(sugData.categories || []);
+        }
+      } catch (err) {
+        console.error("Seller auto-fill error:", err);
+      }
+    };
+
+    loadInitialData();
+  }, []);
 
   const districts = Object.keys(BD_LOCATIONS);
   const upazilas =
-    formData.district && BD_LOCATIONS[formData.district]
-      ? Object.keys(BD_LOCATIONS[formData.district])
+    sellerInfo.district && BD_LOCATIONS[sellerInfo.district]
+      ? Object.keys(BD_LOCATIONS[sellerInfo.district])
       : [];
   const unions =
-    formData.district &&
-    formData.upazila &&
-    BD_LOCATIONS[formData.district]?.[formData.upazila]
-      ? BD_LOCATIONS[formData.district][formData.upazila]
+    sellerInfo.district &&
+    sellerInfo.upazila &&
+    BD_LOCATIONS[sellerInfo.district]?.[sellerInfo.upazila]
+      ? BD_LOCATIONS[sellerInfo.district][sellerInfo.upazila]
       : [];
 
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleSellerChange = (e) => {
+    setSellerInfo({ ...sellerInfo, [e.target.name]: e.target.value });
+  };
+
+  const handleItemChange = (index, field, value) => {
+    setItems((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleSelectSuggestion = (index, sug) => {
+    setItems((prev) =>
+      prev.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              title: sug.title,
+              existingImage: sug.image || "",
+              smartField1: sug.field1 || item.smartField1 || "",
+              smartField2: sug.field2 || item.smartField2 || "",
+              imageFile: null,
+            }
+          : item
+      )
+    );
+  };
+
+  const handleAddMoreAndCollapsePrev = () => {
+    setItems((prev) => {
+      const next = [...prev, { ...EMPTY_PRODUCT }];
+      setActiveIndex(next.length - 1);
+      return next;
+    });
+  };
+
+  const handleToggleCollapse = (index) => {
+    setActiveIndex((prev) => (prev === index ? -1 : index));
+  };
+
+  const handleRemoveItem = (index) => {
+    if (items.length <= 1) return;
+    setItems((prev) => prev.filter((_, idx) => idx !== index));
+    setActiveIndex(0);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!imageFile) {
-      alert("অনুগ্রহ করে একটি প্রোডাক্টের ছবি সিলেক্ট করুন");
-      return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (!items[i].imageFile && !items[i].existingImage) {
+        alert(`পণ্য #${i + 1} (${items[i].title || "নামহীন"})-এর ছবি সিলেক্ট করুন`);
+        return;
+      }
     }
 
     setLoading(true);
     setSuccess("");
-    const optimizedImage = await optimizeImageFile(imageFile, 1200, 0.92);
-    const data = new FormData();
-    Object.keys(formData).forEach((key) => {
-      data.append(key, formData[key]);
-    });
-    data.append("image", imageFile);
+    let uploadedCount = 0;
+
+    const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+    const parseCleanNum = (val) =>
+      String(val || "").replace(/[০-৯]/g, (d) => bnToEn[d]).replace(/[^0-9.]/g, "");
 
     try {
-      const res = await fetch("/api/products/seller/upload-image", {
-        method: "POST",
-        body: data,
-      });
+      for (let i = 0; i < items.length; i++) {
+        const current = items[i];
+        setUploadProgress(`পণ্য ${i + 1} / ${items.length} আপলোড হচ্ছে...`);
 
-      const result = await res.json();
-      setLoading(false);
-
-      if (res.ok) {
-        setSuccess("অভিনন্দন! দোকানের তথ্য ও ছবিসহ নতুন পণ্যটি আপলোড হয়েছে।");
-        setFormData({
-          ...formData,
-          title: "",
-          description: "",
-          price: "",
-          category: "",
-          stock: "",
+        const data = new FormData();
+        Object.keys(sellerInfo).forEach((key) => {
+          if (sellerInfo[key]) data.append(key, sellerInfo[key]);
         });
-        setImageFile(null);
-        e.target.reset();
-      } else {
-        alert(result.message || "আপলোড করতে সমস্যা হয়েছে");
+
+        const unitLabel = current.unit || "কেজি (kg)";
+        const packLabel = current.packagingType || "প্যাকেটজাত";
+        const rxTag = current.prescriptionRequired ? "📄 প্রেসক্রিপশন বাধ্যতামূলক" : "";
+        const smartMeta = [
+          current.smartField1?.trim(),
+          current.smartField2?.trim(),
+          rxTag,
+        ]
+          .filter(Boolean)
+          .join(" • ");
+        const extraInfo = smartMeta ? ` [${smartMeta}]` : "";
+
+        const regularPrice = Number(parseCleanNum(current.price) || 0);
+        const discountPrice = Number(parseCleanNum(current.discountPrice) || 0);
+        const hasValidDiscount = discountPrice > 0 && discountPrice < regularPrice;
+        const finalSellingPrice = hasValidDiscount ? discountPrice : regularPrice;
+        const discountBadge = hasValidDiscount ? ` • 🔥 ছাড় (আগের দাম ৳${regularPrice})` : "";
+
+        const formattedTitle = `${current.title.trim()} (প্রতি ${unitLabel})`;
+        const formattedDesc = `[${packLabel} • প্রতি ${unitLabel}${discountBadge}]${extraInfo} ${current.description.trim()}`;
+
+        const ruleKey = getCategoryRules(current.category).key;
+        if (current.smartField1?.trim()) {
+          const prev1 = JSON.parse(localStorage.getItem(`upazila_smart_${ruleKey}_f1`) || "[]");
+          localStorage.setItem(
+            `upazila_smart_${ruleKey}_f1`,
+            JSON.stringify([...new Set([current.smartField1.trim(), ...prev1])])
+          );
+        }
+        if (current.smartField2?.trim()) {
+          const prev2 = JSON.parse(localStorage.getItem(`upazila_smart_${ruleKey}_f2`) || "[]");
+          localStorage.setItem(
+            `upazila_smart_${ruleKey}_f2`,
+            JSON.stringify([...new Set([current.smartField2.trim(), ...prev2])])
+          );
+        }
+
+        data.append("marketName", sellerInfo.moholla);
+        data.append("title", formattedTitle);
+        data.append("description", formattedDesc);
+        data.append("price", String(finalSellingPrice));
+        if (hasValidDiscount) {
+          data.append("originalPrice", String(regularPrice));
+        }
+        data.append("unit", unitLabel);
+        data.append("packagingType", packLabel);
+        data.append("category", current.category);
+        data.append("stock", "100");
+
+        if (current.imageFile) {
+          const optimizedImage = await optimizeImageFile(current.imageFile, 1200, 0.92);
+          data.append("image", optimizedImage || current.imageFile);
+        } else if (current.existingImage) {
+          data.append("existingImage", current.existingImage);
+        }
+
+        const res = await fetch("/api/products/seller/upload-image", {
+          method: "POST",
+          body: data,
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.message || `পণ্য #${i + 1} আপলোড করতে সমস্যা হয়েছে`);
+        }
+        uploadedCount++;
       }
+
+      setSuccess(`অভিনন্দন! মোট ${uploadedCount}টি পণ্য সফলভাবে আপলোড হয়েছে।`);
+      setItems([{ ...EMPTY_PRODUCT }]);
+      setActiveIndex(0);
+      e.target.reset();
     } catch (err) {
+      alert(err.message || "সার্ভার কানেকশনে সমস্যা হয়েছে");
+    } finally {
       setLoading(false);
-      alert("সার্ভার কানেকশনে সমস্যা হয়েছে");
+      setUploadProgress("");
     }
   };
   return (
@@ -97,11 +282,17 @@ export default function SellerProductForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="bg-green-50/60 p-4 rounded-xl border border-green-100 space-y-3">
-          <h3 className="text-sm font-bold text-green-800 flex items-center gap-1.5">
-            <Store className="w-4 h-4" /> দোকান ও বিক্রেতার তথ্য
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-green-800 flex items-center gap-1.5">
+              <Store className="w-4 h-4" /> দোকান ও বাজারের তথ্য (অটোমেটিক)
+            </h3>
+            <span className="text-[11px] text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-medium">
+              প্রোফাইল থেকে সংযুক্ত
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">দোকানের নাম</label>
@@ -110,8 +301,8 @@ export default function SellerProductForm() {
                 name="shopName"
                 required
                 placeholder="উদাঃ বিসমিল্লাহ স্টোর"
-                value={formData.shopName}
-                onChange={handleInputChange}
+                value={sellerInfo.shopName}
+                onChange={handleSellerChange}
                 className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
@@ -122,20 +313,22 @@ export default function SellerProductForm() {
                 name="sellerName"
                 required
                 placeholder="উদাঃ মোঃ আব্দুল করিম"
-                value={formData.sellerName}
-                onChange={handleInputChange}
+                value={sellerInfo.sellerName}
+                onChange={handleSellerChange}
                 className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">জেলা</label>
               <select
                 name="district"
-                value={formData.district}
-                onChange={(e) => setFormData({ ...formData, district: e.target.value, upazila: "", union: "" })}
+                value={sellerInfo.district}
+                onChange={(e) =>
+                  setSellerInfo({ ...sellerInfo, district: e.target.value, upazila: "", union: "" })
+                }
                 className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
               >
                 {districts.map((dist) => (
@@ -148,8 +341,8 @@ export default function SellerProductForm() {
               <select
                 name="upazila"
                 required
-                value={formData.upazila}
-                onChange={(e) => setFormData({ ...formData, upazila: e.target.value, union: "" })}
+                value={sellerInfo.upazila}
+                onChange={(e) => setSellerInfo({ ...sellerInfo, upazila: e.target.value, union: "" })}
                 className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">নির্বাচন করুন</option>
@@ -163,9 +356,9 @@ export default function SellerProductForm() {
               <input
                 list="seller-unions"
                 name="union"
-                placeholder="ইউনিয়ন লিখুন..."
-                value={formData.union}
-                onChange={handleInputChange}
+                placeholder="ইউনিয়ন..."
+                value={sellerInfo.union}
+                onChange={handleSellerChange}
                 className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
               />
               <datalist id="seller-unions">
@@ -174,104 +367,60 @@ export default function SellerProductForm() {
                 ))}
               </datalist>
             </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">বাজার / হাটের নাম</label>
+              <input
+                type="text"
+                name="moholla"
+                required
+                placeholder="উদাঃ আমতলা বাজার"
+                value={sellerInfo.moholla}
+                onChange={handleSellerChange}
+                className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">পণ্যের নাম</label>
-          <input
-            type="text"
-            name="title"
-            required
-            placeholder="উদাঃ খাঁটি সরিষার তেল (১ লিটার)"
-            value={formData.title}
-            onChange={handleInputChange}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">মূল্য (টাকা)</label>
-            <input
-              type="number"
-              name="price"
-              required
-              placeholder="উদাঃ ২২০"
-              value={formData.price}
-              onChange={handleInputChange}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-green-500"
+        <div className="space-y-3">
+          {items.map((item, index) => (
+            <ProductItemCard
+              key={index}
+              item={item}
+              index={index}
+              total={items.length}
+              isCollapsed={activeIndex !== index}
+              onToggleCollapse={handleToggleCollapse}
+              suggestions={suggestions}
+              extraCategories={extraCategories}
+              onChange={handleItemChange}
+              onSelectSuggestion={handleSelectSuggestion}
+              onRemove={handleRemoveItem}
             />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">স্টক পরিমাণ</label>
-            <input
-              type="number"
-              name="stock"
-              placeholder="উদাঃ ২৫"
-              value={formData.stock}
-              onChange={handleInputChange}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
+          ))}
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">ক্যাটাগরি</label>
-          <select
-            name="category"
-            required
-            value={formData.category}
-            onChange={handleInputChange}
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="">ক্যাটাগরি নির্বাচন করুন</option>
-            <option value="মুদি">মুদি বাজার</option>
-            <option value="চাল ও ডাল">চাল ও ডাল</option>
-            <option value="ভোজ্য তেল">ভোজ্য তেল</option>
-            <option value="সবজি">তাজা শাক-সবজি</option>
-            <option value="নিত্যদিনের সবজি">নিত্যদিনের সবজি</option>
-            <option value="আলু, পেঁয়াজ ও রসুন">আলু, পেঁয়াজ ও রসুন</option>
-            <option value="ফল">দেশী ফলমূল</option>
-            <option value="মাছ ও মাংস">মাছ ও মাংস</option>
-            <option value="দুগ্ধ">দুধ ও ডিম</option>
-            <option value="মসলা">মসলাপাতি</option>
-            <option value="স্ন্যাকস">বেকারি ও স্ন্যাকস</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">পণ্যের বিবরণ</label>
-          <textarea
-            name="description"
-            required
-            rows="3"
-            placeholder="পণ্যের গুণগত মান বা বিবরণ লিখুন..."
-            value={formData.description}
-            onChange={handleInputChange}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-green-500 resize-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
-            <Image className="w-4 h-4 text-gray-400" /> পণ্যের ছবি আপলোড
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            required
-            onChange={(e) => setImageFile(e.target.files[0])}
-            className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer"
-          />
-        </div>
+        <button
+          type="button"
+          onClick={handleAddMoreAndCollapsePrev}
+          className="w-full border-2 border-dashed border-green-400 hover:border-green-600 bg-green-50/40 hover:bg-green-50 text-green-700 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Plus className="w-5 h-5" /> আরও একটি পণ্য যোগ করুন
+        </button>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-md disabled:bg-gray-300"
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-md disabled:bg-gray-300 cursor-pointer"
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "পণ্যটি আপলোড করুন"}
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>{uploadProgress || "আপলোড হচ্ছে..."}</span>
+            </>
+          ) : (
+            `সবগুলো পণ্য আপলোড করুন (${items.length}টি)`
+          )}
         </button>
       </form>
     </div>

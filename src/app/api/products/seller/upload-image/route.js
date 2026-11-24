@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
+import User from "@/models/User";
 import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
@@ -13,7 +14,6 @@ cloudinary.config({
 
 export async function POST(request) {
   try {
-    // ১. কুকি থেকে JWT টোকেন নিয়ে আসল sellerId বের করা
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
@@ -31,57 +31,83 @@ export async function POST(request) {
 
     await connectDB();
 
+    const sellerProfile = await User.findById(sellerId)
+      .select("name shopName marketName district upazila union moholla")
+      .lean();
+
     const formData = await request.formData();
     const title = formData.get("title");
     const description = formData.get("description");
     const price = formData.get("price");
     const category = formData.get("category");
     const stock = formData.get("stock");
-    const shopName = formData.get("shopName");
-    const sellerName = formData.get("sellerName");
-    const district = formData.get("district");
-    const upazila = formData.get("upazila");
-    const union = formData.get("union");
+    const shopName = formData.get("shopName") || sellerProfile?.shopName;
+    const sellerName = formData.get("sellerName") || sellerProfile?.name;
+    const district = formData.get("district") || sellerProfile?.district;
+    const upazila = formData.get("upazila") || sellerProfile?.upazila;
+    const union = formData.get("union") || sellerProfile?.union;
+    const moholla =
+      formData.get("moholla") ||
+      formData.get("marketName") ||
+      sellerProfile?.marketName ||
+      sellerProfile?.moholla ||
+      "";
     const file = formData.get("image");
+    const existingImage = formData.get("existingImage") || "";
 
-    if (!title || !description || !price || !category || !file) {
+    const hasNewFile = file && typeof file !== "string" && file.size > 0;
+
+    if (!title || !description || !price || !category || (!hasNewFile && !existingImage)) {
       return NextResponse.json({ message: "সব তথ্য এবং ছবি সঠিকভাবে দিন" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // সেলারের প্রোফাইলে বাজারের নাম না থাকলে অটো আপডেট করে দেওয়া
+    if (moholla && sellerProfile && !sellerProfile.marketName) {
+      await User.findByIdAndUpdate(sellerId, {
+        marketName: moholla.trim(),
+        moholla: moholla.trim(),
+      });
+    }
 
-    // ২. স্পিড অপটিমাইজেশনসহ Cloudinary আপলোড (ফাইল সাইজ অনেক হালকা হবে)
-    const uploadResult = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          folder: "upazila_bazar_products",
-          transformation: [
-            { width: 800, crop: "limit" },
-            { quality: "auto", fetch_format: "auto" },
-          ],
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      ).end(buffer);
-    });
+    let finalImageUrl = existingImage;
 
-    // ৩. ডাটাবেসে ভেরিফাইড sellerId সহ প্রোডাক্ট সেভ করা
+    if (hasNewFile) {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      const uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            folder: "upazila_bazar_products",
+            transformation: [
+              { width: 800, crop: "limit" },
+              { quality: "auto", fetch_format: "auto" },
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        ).end(buffer);
+      });
+
+      finalImageUrl = uploadResult.secure_url;
+    }
+
     const newProduct = await Product.create({
-      title,
+      title: title.trim(),
       sellerId,
-      description,
+      description: description.trim(),
       price: Number(price),
-      category,
-      stock: stock ? Number(stock) : 10,
+      category: category.trim(),
+      stock: stock ? Number(stock) : 100,
       shopName: shopName || "উপজেলা ভেরিফায়েড স্টোর",
       sellerName: sellerName || payload.name || "স্থানীয় বিক্রেতা",
       district: district || "কিশোরগঞ্জ",
       upazila: upazila || "ভৈরব",
       union: union || "",
-      image: uploadResult.secure_url,
+      moholla: moholla.trim(),
+      image: finalImageUrl,
     });
 
     return NextResponse.json(

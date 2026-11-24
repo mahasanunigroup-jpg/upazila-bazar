@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import HomeHeader from "@/components/HomeHeader";
 import ServiceHighlights from "@/components/ServiceHighlights";
 import CategorySidebar from "@/components/CategorySidebar";
 import FlashDealBanner from "@/components/FlashDealBanner";
+import UnionMarketSection from "@/components/UnionMarketSection";
 import ProductGridSection from "@/components/ProductGridSection";
 import ProductModal from "@/components/ProductModal";
 import CartDrawer from "@/components/CartDrawer";
@@ -31,6 +32,7 @@ export default function HomeClient({ initialProducts = [] }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("সব পণ্য");
   const [selectedShop, setSelectedShop] = useState("সব দোকান");
+  const [selectedMarket, setSelectedMarket] = useState("সব বাজার");
   const [sortBy, setSortBy] = useState("newest");
   const [showWishlistOnly, setShowWishlistOnly] = useState(false);
 
@@ -45,23 +47,24 @@ export default function HomeClient({ initialProducts = [] }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
-    const loadLocalData = () => {
-      try {
-        const savedCart = JSON.parse(localStorage.getItem("upazila_cart") || "[]");
-        const savedWishlist = JSON.parse(localStorage.getItem("upazila_wishlist") || "[]");
-        const savedLoc = JSON.parse(localStorage.getItem("upazila_full_location") || "null");
+    try {
+      const savedCart = JSON.parse(localStorage.getItem("upazila_cart") || "[]");
+      const savedWishlist = JSON.parse(localStorage.getItem("upazila_wishlist") || "[]");
+      const savedLoc = JSON.parse(localStorage.getItem("upazila_full_location") || "null");
 
-        setCart(savedCart);
-        setWishlist(savedWishlist);
-        if (savedLoc) setLocation(savedLoc);
-      } catch (err) {
-        console.error("Local storage load error:", err);
-      }
-    };
-
-    const timer = setTimeout(loadLocalData, 0);
-    return () => clearTimeout(timer);
+      setCart(savedCart);
+      setWishlist(savedWishlist);
+      if (savedLoc) setLocation(savedLoc);
+    } catch (err) {
+      console.error("Local storage load error:", err);
+    }
   }, []);
+
+  const handleLocationChange = (newLoc) => {
+    setLocation(newLoc);
+    setSelectedMarket("সব বাজার");
+    setSelectedShop("সব দোকান");
+  };
 
   const syncCart = (updatedCart) => {
     setCart(updatedCart);
@@ -107,92 +110,90 @@ export default function HomeClient({ initialProducts = [] }) {
   const resetFilters = () => {
     setSearchQuery("");
     setSelectedCategory("সব পণ্য");
+    setSelectedMarket("সব বাজার");
     setSelectedShop("সব দোকান");
     setSortBy("newest");
     setShowWishlistOnly(false);
   };
 
-  const availableShops = [
-    "সব দোকান",
-    ...new Set(
-      products
-        .filter((p) => {
-          const matchDist = !location.district || !p.district || p.district === location.district;
-          const matchUpz = !location.upazila || !p.upazila || p.upazila === location.upazila;
-          return matchDist && matchUpz;
-        })
-        .map((p) => p.shopName || "উপজেলা ভেরিফায়েড স্টোর")
-    ),
-  ];
-  const filteredProducts = products
-    .filter((product) => {
-      // ১. জেলা ফিল্টার
-      if (location?.district && product.district) {
-        if (!product.district.includes(location.district) && !location.district.includes(product.district)) {
-          return false;
-        }
-      } else if (location?.district && !product.district) {
-        return false;
-      }
-
-      // ২. উপজেলা ফিল্টার
-      if (location?.upazila && product.upazila) {
-        if (!product.upazila.includes(location.upazila) && !location.upazila.includes(product.upazila)) {
-          return false;
-        }
-      } else if (location?.upazila && !product.upazila) {
-        return false;
-      }
-
-      // ৩. ইউনিয়ন / পৌরসভা ফিল্টার
-      if (location?.union && product.union) {
-        if (!product.union.includes(location.union) && !location.union.includes(product.union)) {
-          return false;
-        }
-      } else if (location?.union && !product.union) {
-        return false;
-      }
-
-      // ৪. মহল্লা / গ্রাম ফিল্টার
-      if (location?.moholla && product.moholla) {
-        if (!product.moholla.toLowerCase().includes(location.moholla.toLowerCase())) {
-          return false;
-        }
-      }
-
-      // ৫. ক্যাটাগরি ফিল্টার
-      if (selectedCategory !== "সব পণ্য") {
-        const validCats = SUB_MAP[selectedCategory] || [selectedCategory];
-        if (!validCats.includes(product.category)) return false;
-      }
-
-      // ৬. দোকান ফিল্টার
-      if (selectedShop !== "সব দোকান") {
-        const pShop = product.shopName || "উপজেলা ভেরিফায়েড স্টোর";
-        if (pShop !== selectedShop) return false;
-      }
-
-      // ৭. উইশলিস্ট ফিল্টার
-      if (showWishlistOnly && !wishlist.includes(product._id)) {
-        return false;
-      }
-
-      // ৮. সার্চ ফিল্টার
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = product.title?.toLowerCase().includes(q);
-        const matchShop = product.shopName?.toLowerCase().includes(q);
-        const matchSeller = product.sellerName?.toLowerCase().includes(q);
-        if (!matchTitle && !matchShop && !matchSeller) return false;
-      }
-
+  const areaProducts = useMemo(() => {
+    return products.filter((product) => {
+      if (location?.district && (!product.district || (!product.district.includes(location.district) && !location.district.includes(product.district)))) return false;
+      if (location?.upazila && (!product.upazila || (!product.upazila.includes(location.upazila) && !location.upazila.includes(product.upazila)))) return false;
+      if (location?.union && (!product.union || (!product.union.includes(location.union) && !location.union.includes(product.union)))) return false;
       return true;
-    })
-    .sort((a, b) => (sortBy === "low-to-high" ? a.price - b.price : sortBy === "high-to-low" ? b.price - a.price : 0));
+    });
+  }, [products, location.district, location.upazila, location.union]);
 
+  const unionMarketsData = useMemo(() => {
+    const marketMap = {};
+    const defaultMarketName = location?.union ? `${location.union} মূল সদর বাজার` : "মূল সদর বাজার";
+
+    areaProducts.forEach((p) => {
+      const mName = p.moholla?.trim() || defaultMarketName;
+      const sName = p.shopName || "উপজেলা ভেরিফায়েড স্টোর";
+
+      if (!marketMap[mName]) marketMap[mName] = { name: mName, shops: {}, productCount: 0 };
+      marketMap[mName].productCount += 1;
+
+      if (!marketMap[mName].shops[sName]) {
+        marketMap[mName].shops[sName] = {
+          shopName: sName,
+          sellerName: p.sellerName || "স্থানীয় বিক্রেতা",
+          marketName: mName,
+          productCount: 0,
+          ratingSum: 0,
+          ratedCount: 0,
+        };
+      }
+
+      marketMap[mName].shops[sName].productCount += 1;
+      if (p.rating > 0) {
+        marketMap[mName].shops[sName].ratingSum += p.rating;
+        marketMap[mName].shops[sName].ratedCount += 1;
+      }
+    });
+
+    return Object.values(marketMap).map((m) => ({
+      ...m,
+      shopList: Object.values(m.shops).map((s) => ({
+        ...s,
+        avgRating: s.ratedCount > 0 ? (s.ratingSum / s.ratedCount).toFixed(1) : "নতুন",
+      })),
+    }));
+  }, [areaProducts, location.union]);
+
+  const activeMarketShops = useMemo(() => {
+    if (selectedMarket === "সব বাজার") return unionMarketsData.flatMap((m) => m.shopList);
+    return unionMarketsData.find((m) => m.name === selectedMarket)?.shopList || [];
+  }, [unionMarketsData, selectedMarket]);
+
+  const availableShops = useMemo(() => ["সব দোকান", ...new Set(activeMarketShops.map((s) => s.shopName))], [activeMarketShops]);
+
+  const filteredProducts = useMemo(() => {
+    const defaultMarketName = location?.union ? `${location.union} মূল সদর বাজার` : "মূল সদর বাজার";
+
+    return areaProducts
+      .filter((product) => {
+        if (location?.moholla && product.moholla && !product.moholla.toLowerCase().includes(location.moholla.toLowerCase())) return false;
+        if (selectedMarket !== "সব বাজার" && (product.moholla?.trim() || defaultMarketName) !== selectedMarket) return false;
+        if (selectedCategory !== "সব পণ্য" && !(SUB_MAP[selectedCategory] || [selectedCategory]).includes(product.category)) return false;
+        if (selectedShop !== "সব দোকান" && (product.shopName || "উপজেলা ভেরিফায়েড স্টোর") !== selectedShop) return false;
+        if (showWishlistOnly && !wishlist.includes(product._id)) return false;
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const match = [product.title, product.shopName, product.sellerName, product.moholla].some((f) => f?.toLowerCase().includes(q));
+          if (!match) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (sortBy === "low-to-high" ? a.price - b.price : sortBy === "high-to-low" ? b.price - a.price : 0));
+  }, [areaProducts, location.moholla, location.union, selectedMarket, selectedCategory, selectedShop, showWishlistOnly, wishlist, searchQuery, sortBy]);
+
+  const currentShopDetails = useMemo(() => (selectedShop === "সব দোকান" ? null : activeMarketShops.find((s) => s.shopName === selectedShop) || null), [selectedShop, activeMarketShops]);
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const hasActiveFilter = searchQuery || selectedCategory !== "সব পণ্য" || selectedShop !== "সব দোকান" || showWishlistOnly;
-
+  const hasActiveFilter = searchQuery || selectedCategory !== "সব পণ্য" || selectedMarket !== "সব বাজার" || selectedShop !== "সব দোকান" || showWishlistOnly;
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-between">
       <div>
@@ -200,7 +201,7 @@ export default function HomeClient({ initialProducts = [] }) {
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           location={location}
-          setLocation={setLocation}
+          setLocation={handleLocationChange}
           totalCartItems={totalCartItems}
           onOpenCart={() => setIsCartOpen(true)}
         />
@@ -211,7 +212,7 @@ export default function HomeClient({ initialProducts = [] }) {
           <div className="relative">
             <input
               type="text"
-              placeholder="পণ্য, দোকানের নাম বা দোকানদারের নাম লিখুন..."
+              placeholder="পণ্য, বাজার বা দোকানের নাম লিখুন..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none"
@@ -230,8 +231,19 @@ export default function HomeClient({ initialProducts = [] }) {
             resetFilters={resetFilters}
           />
 
-          <main className="flex-1 w-full">
+          <main className="flex-1 w-full min-w-0">
             <FlashDealBanner onSelectOffer={() => setSortBy("low-to-high")} />
+
+            <UnionMarketSection
+              location={location}
+              unionMarketsData={unionMarketsData}
+              activeMarketShops={activeMarketShops}
+              selectedMarket={selectedMarket}
+              setSelectedMarket={setSelectedMarket}
+              selectedShop={selectedShop}
+              setSelectedShop={setSelectedShop}
+              currentShopDetails={currentShopDetails}
+            />
 
             <ProductGridSection
               loading={loading}

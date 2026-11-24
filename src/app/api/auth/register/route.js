@@ -15,9 +15,11 @@ export async function POST(req) {
       password,
       role,
       shopName,
+      marketName,
       district,
       upazila,
       union,
+      moholla,
       address,
     } = body;
 
@@ -28,11 +30,18 @@ export async function POST(req) {
       );
     }
 
-    const queryConditions = [];
-    if (email) queryConditions.push({ email });
-    if (phone) queryConditions.push({ phone });
+    if (role === "seller" && (!shopName?.trim() || !marketName?.trim())) {
+      return NextResponse.json(
+        { error: "দোকানদার অ্যাকাউন্টের জন্য দোকানের নাম এবং বাজারের নাম আবশ্যক" },
+        { status: 400 }
+      );
+    }
 
-    const existingUser = await User.findOne({ $or: queryConditions });
+    const queryConditions = [];
+    if (email) queryConditions.push({ email: email.trim().toLowerCase() });
+    if (phone) queryConditions.push({ phone: phone.trim() });
+
+    const existingUser = await User.findOne({ $or: queryConditions }).lean();
     if (existingUser) {
       return NextResponse.json(
         { error: "এই ইমেইল বা ফোন নম্বর দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে" },
@@ -41,18 +50,21 @@ export async function POST(req) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const finalMarket = (marketName || moholla || "").trim();
 
     const user = await User.create({
-      name,
-      email: email || undefined,
-      phone: phone || undefined,
+      name: name.trim(),
+      email: email ? email.trim().toLowerCase() : undefined,
+      phone: phone ? phone.trim() : undefined,
       password: hashedPassword,
       role: role || "customer",
-      shopName: shopName || "",
+      shopName: role === "seller" ? shopName.trim() : "",
+      marketName: role === "seller" ? finalMarket : "",
       district: district || "",
       upazila: upazila || "",
       union: union || "",
-      address: address || "",
+      moholla: finalMarket,
+      address: address ? address.trim() : "",
     });
 
     return NextResponse.json(
@@ -64,6 +76,8 @@ export async function POST(req) {
           email: user.email,
           phone: user.phone,
           role: user.role,
+          shopName: user.shopName,
+          marketName: user.marketName,
         },
       },
       { status: 201 }
