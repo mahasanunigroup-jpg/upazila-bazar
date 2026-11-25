@@ -37,9 +37,13 @@ async function EarningsDetailsContent() {
       "items.sellerId": sellerObjectId,
       $or: [{ deliveryStatus: "delivered" }, { status: "delivered" }],
     })
+      .select("orderId customer_name items createdAt")
       .sort({ createdAt: -1 })
       .lean(),
-    Setting.collection.findOne({ key: "global_settings" }),
+    Setting.collection.findOne(
+      { key: "global_settings" },
+      { projection: { commissionPercent: 1 } }
+    ),
   ]);
 
   const commissionPercent = Number(globalSettings?.commissionPercent ?? 5);
@@ -61,7 +65,7 @@ async function EarningsDetailsContent() {
       customerName: order.customer_name || "ক্রেতা",
       date: new Date(order.createdAt).toLocaleDateString("bn-BD", {
         day: "numeric",
-        month: "long",
+        month: "short",
         year: "numeric",
       }),
       itemCount: sellerItems.length,
@@ -77,109 +81,149 @@ async function EarningsDetailsContent() {
     0
   );
   const grandNet = breakdownList.reduce((sum, item) => sum + item.net, 0);
+
   return (
-    <div className="space-y-6">
-      {/* হেডার */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            আয় ও কমিশন বিবরণী (Earnings)
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            প্ল্যাটফর্ম কমিশন হার:{" "}
-            <span className="font-semibold text-emerald-600">
-              {commissionPercent}%
-            </span>{" "}
-            (শুধুমাত্র ডেলিভারড অর্ডার)
+    <div className="space-y-4 sm:space-y-5">
+      {/* স্লিম ও স্মার্ট হেডার */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3.5 sm:p-5 rounded-2xl shadow-2xs border border-gray-100">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-base sm:text-xl font-bold text-gray-800">
+              আয় ও কমিশন বিবরণী
+            </h1>
+            <span className="text-[10px] sm:text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+              কমিশন: {commissionPercent}%
+            </span>
+          </div>
+          <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+            শুধুমাত্র ডেলিভারি সম্পন্ন হওয়া অর্ডারের হিসাব
           </p>
         </div>
 
         <Link
           href="/seller/dashboard"
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition w-fit"
+          className="px-3 py-1.5 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition w-fit whitespace-nowrap shrink-0"
         >
-          ← ড্যাশবোর্ডে ফিরুন
+          ← ড্যাশবোর্ড
         </Link>
       </div>
 
-      {/* ৩টি সামারি কার্ড */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-xs font-medium text-gray-500">মোট বিক্রি (ডেলিভারড)</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">
+      {/* ৩টি স্মার্ট সামারি কার্ড */}
+            {/* ৩টি স্মার্ট সামারি কার্ড (মোবাইলে ১ কলাম, বড় ডিভাইসে ৩ কলাম) */}
+            {/* ১. ওপরের ৩টি সামারি কার্ড: মোবাইলে ১, ট্যাবে ২, ল্যাপটপে ৩ কলাম */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl shadow-2xs border border-emerald-200 bg-emerald-50/25">
+          <p className="text-[11px] sm:text-xs font-semibold text-emerald-700">
+            আপনার নিট পাওনা (Net)
+          </p>
+          <p className="text-xl sm:text-2xl font-extrabold text-emerald-600 mt-0.5">
+            ৳{grandNet.toLocaleString("bn-BD")}
+          </p>
+        </div>
+
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl shadow-2xs border border-gray-100">
+          <p className="text-[11px] sm:text-xs font-medium text-gray-500">
+            মোট বিক্রি
+          </p>
+          <p className="text-lg sm:text-xl font-extrabold text-gray-800 mt-0.5">
             ৳{grandSales.toLocaleString("bn-BD")}
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-red-100 bg-red-50/20">
-          <p className="text-xs font-medium text-red-600">
-            প্ল্যাটফর্ম কমিশন ({commissionPercent}%)
+        <div className="sm:col-span-2 lg:col-span-1 bg-white p-3.5 sm:p-4 rounded-2xl shadow-2xs border border-red-100 bg-red-50/20">
+          <p className="text-[11px] sm:text-xs font-medium text-red-600">
+            কমিশন ({commissionPercent}%)
           </p>
-          <p className="text-2xl font-bold text-red-600 mt-1">
+          <p className="text-lg sm:text-xl font-extrabold text-red-600 mt-0.5">
             - ৳{grandCommission.toLocaleString("bn-BD")}
           </p>
         </div>
+      </div>
 
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-emerald-200 bg-emerald-50/30">
-          <p className="text-xs font-medium text-emerald-700">
-            আপনার নিট পাওনা (Net Payable)
-          </p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">
-            ৳{grandNet.toLocaleString("bn-BD")}
-          </p>
+      {/* ২. নিচের সব অর্ডার কার্ড: মোবাইলে ১, ট্যাবে ২, ল্যাপটপে ৩ কলাম */}
+      {breakdownList.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-2xs border border-gray-100 py-10 text-center text-xs sm:text-sm text-gray-500">
+          এখনো কোনো ডেলিভারড অর্ডার নেই।
         </div>
-      </div>
-
-      {/* অর্ডার ভিত্তিক বিস্তারিত টেবিল */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-        {breakdownList.length === 0 ? (
-          <p className="text-center text-gray-500 py-10 text-sm">
-            এখনো কোনো ডেলিভারড অর্ডার নেই।
-          </p>
-        ) : (
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b text-gray-600">
-                <th className="py-3.5 px-4">অর্ডার আইডি ও তারিখ</th>
-                <th className="py-3.5 px-4">ক্রেতা</th>
-                <th className="py-3.5 px-4">মোট বিক্রি</th>
-                <th className="py-3.5 px-4">কমিশন ({commissionPercent}%)</th>
-                <th className="py-3.5 px-4 text-right">নিট আয়</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {breakdownList.map((row) => (
-                <tr key={row._id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4">
-                    <p className="font-semibold text-gray-800">#{row.orderId}</p>
-                    <p className="text-xs text-gray-400">
-                      {row.date} • {row.itemCount} টি পণ্য
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3.5 xl:hidden">
+            {breakdownList.map((row) => (
+              <div
+                key={row._id}
+                className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs flex flex-col justify-between gap-2 text-xs"
+              >
+                <div className="flex items-start justify-between gap-2 min-w-0">
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-gray-800 truncate">#{row.orderId}</p>
+                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                      {row.date} • {row.customerName} ({row.itemCount} পণ্য)
                     </p>
-                  </td>
-                  <td className="py-3 px-4 text-gray-600">{row.customerName}</td>
-                  <td className="py-3 px-4 font-medium">৳{row.sales}</td>
-                  <td className="py-3 px-4 text-red-500 font-medium">
-                    - ৳{row.commission}
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold text-emerald-600">
-                    ৳{row.net}
-                  </td>
+                  </div>
+                  <span className="font-extrabold text-sm text-emerald-600 whitespace-nowrap shrink-0">
+                    +৳{row.net.toLocaleString("bn-BD")}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 text-[11px] text-gray-500">
+                  <span>বিক্রি: ৳{row.sales.toLocaleString("bn-BD")}</span>
+                  <span className="text-red-500">
+                    কমিশন: -৳{row.commission.toLocaleString("bn-BD")}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* বড় ডেস্কটপ টেবিল ভিউ */}
+          <div className="hidden xl:block bg-white rounded-2xl shadow-2xs border border-gray-100 overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b text-gray-600">
+                  <th className="py-3 px-4">অর্ডার আইডি ও তারিখ</th>
+                  <th className="py-3 px-4">ক্রেতা</th>
+                  <th className="py-3 px-4">মোট বিক্রি</th>
+                  <th className="py-3 px-4">কমিশন ({commissionPercent}%)</th>
+                  <th className="py-3 px-4 text-right">নিট আয়</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {breakdownList.map((row) => (
+                  <tr key={row._id} className="hover:bg-gray-50">
+                    <td className="py-3 px-4">
+                      <p className="font-semibold text-gray-800">#{row.orderId}</p>
+                      <p className="text-xs text-gray-400">
+                        {row.date} • {row.itemCount} টি পণ্য
+                      </p>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600">{row.customerName}</td>
+                    <td className="py-3 px-4 font-medium">
+                      ৳{row.sales.toLocaleString("bn-BD")}
+                    </td>
+                    <td className="py-3 px-4 text-red-500 font-medium">
+                      - ৳{row.commission.toLocaleString("bn-BD")}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-emerald-600">
+                      ৳{row.net.toLocaleString("bn-BD")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
     </div>
   );
 }
 
 export default function SellerEarningsPage() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       <Suspense
         fallback={
-          <div className="bg-white p-12 text-center rounded-xl border text-gray-500">
+          <div className="bg-white p-10 text-center rounded-2xl border border-gray-100 text-xs sm:text-sm text-gray-500">
             আয়ের বিস্তারিত হিসাব লোড হচ্ছে...
           </div>
         }

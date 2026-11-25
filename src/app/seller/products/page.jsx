@@ -11,7 +11,6 @@ export const metadata = {
   title: "আমার পণ্যসমূহ | উপজেলা বাজার",
 };
 
-// আসল ডাটা ফেচিং কম্পোনেন্ট (Suspense-এর ভেতরে চলবে)
 async function ProductDataSection() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -46,29 +45,30 @@ async function ProductDataSection() {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">আমার পণ্যসমূহ (My Products)</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            মোট পণ্য: <span className="font-semibold text-emerald-600">{products.length} টি</span>
-          </p>
+      {/* স্লিম ও রেসপন্সিভ হেডার কার্ড */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6 bg-white p-3.5 sm:p-5 rounded-2xl shadow-2xs border border-gray-100">
+        <div className="flex items-center justify-between sm:justify-start gap-2.5 min-w-0">
+          <h1 className="text-base sm:text-xl font-bold text-gray-800 truncate">
+            আমার পণ্যসমূহ
+          </h1>
+          <span className="text-[11px] sm:text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0">
+            মোট: {products.length.toLocaleString("bn-BD")} টি
+          </span>
         </div>
 
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
           <Link
-            href="/seller/dashboard"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+            href="/seller/orders"
+            className="px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition text-center whitespace-nowrap"
           >
             অর্ডার ড্যাশবোর্ড
           </Link>
-          {/* আপনার প্রোডাক্ট আপলোড পেজের সঠিক লিংকটি এখানে বসাবেন */}
-                   <Link
+          <Link
             href="/seller/add-product"
-            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition"
+            className="px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-2xs transition text-center whitespace-nowrap"
           >
-            + নতুন পণ্য যোগ করুন
+            + নতুন পণ্য যোগ
           </Link>
-
         </div>
       </div>
 
@@ -79,10 +79,10 @@ async function ProductDataSection() {
 
 export default function SellerProductsPage() {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       <Suspense
         fallback={
-          <div className="bg-white p-10 text-center rounded-xl border border-gray-100 text-gray-500">
+          <div className="bg-white p-10 text-center rounded-2xl border border-gray-100 text-xs sm:text-sm text-gray-500">
             আপনার পণ্যসমূহ লোড হচ্ছে...
           </div>
         }
