@@ -2,19 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { BD_LOCATIONS } from "@/data/bdLocations";
-import SearchableSelect from "@/components/SearchableSelect";
+import MobileSidebarDrawer from "@/components/MobileSidebarDrawer";
+import LocationModal from "@/components/LocationModal";
 import {
   Store,
   MapPin,
   Search,
   ShoppingCart,
-  PackageSearch,
   ChevronLeft,
   ChevronRight,
-  X,
-  Check,
+  Menu,
 } from "lucide-react";
 
 const PROMO_SLIDES = [
@@ -39,22 +36,23 @@ export default function HomeHeader({
   setLocation,
   totalCartItems,
   onOpenCart,
+  wishlistCount,
+  onOpenWishlist,
+  onSelectCategory,
 }) {
-  const router = useRouter();
-  const [trackId, setTrackId] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLocModalOpen, setIsLocModalOpen] = useState(false);
-  const [tempLoc, setTempLoc] = useState(location);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-  fetch("/api/auth/me")
-    .then((res) => res.json())
-    .then((data) => {
-      if (data?.user) setCurrentUser(data.user);
-    })
-    .catch(() => {});
-}, []);
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -63,27 +61,9 @@ export default function HomeHeader({
     return () => clearInterval(timer);
   }, []);
 
-  // শুরুতেই 'সকল জেলা (সারা বাংলাদেশ)' অপশন রাখা হলো
-  const districts = ["সকল জেলা (সারা বাংলাদেশ)", ...Object.keys(BD_LOCATIONS)];
-  const upazilas =
-    tempLoc?.district && BD_LOCATIONS[tempLoc.district]
-      ? ["সকল উপজেলা", ...Object.keys(BD_LOCATIONS[tempLoc.district])]
-      : [];
-  const unions =
-    tempLoc?.district && tempLoc?.upazila && BD_LOCATIONS[tempLoc.district]?.[tempLoc.upazila]
-      ? ["সকল ইউনিয়ন", ...BD_LOCATIONS[tempLoc.district][tempLoc.upazila]]
-      : [];
-
-  const handleSaveLocation = (e) => {
-    e.preventDefault();
-    setLocation(tempLoc);
-    localStorage.setItem("upazila_full_location", JSON.stringify(tempLoc));
-    setIsLocModalOpen(false);
-  };
-
-  const handleTrackSubmit = (e) => {
-    e.preventDefault();
-    if (trackId.trim()) router.push(`/orders/${trackId.trim()}`);
+  const handleSaveLocation = (cleanedLoc) => {
+    setLocation(cleanedLoc);
+    localStorage.setItem("upazila_full_location", JSON.stringify(cleanedLoc));
   };
 
   const activePromo = PROMO_SLIDES[currentSlide];
@@ -93,26 +73,42 @@ export default function HomeHeader({
     ? `${location.union}, ${location.upazila}`
     : location?.upazila
     ? `${location.upazila}, ${location.district}`
-    : location?.district || "সকল জেলা (সারা বাংলাদেশ)";
+    : location?.district || "সারা বাংলাদেশ";
+
+  const isCustomerOrGuest = currentUser?.role !== "seller" && currentUser?.role !== "rider";
+
   return (
     <>
-      <nav className="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-1.5 text-green-600 font-extrabold text-lg sm:text-xl shrink-0">
-              <Store className="w-6 h-6" /> উপজেলা বাজার
-            </Link>
-                        <button
-              onClick={() => { setTempLoc(location); setIsLocModalOpen(true); }}
-              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-800 px-2.5 py-1.5 rounded-full text-xs font-bold border border-green-200 max-w-[115px] sm:max-w-64"
+      <nav className="bg-white shadow-xs sticky top-0 z-40 border-b border-gray-100 w-full">
+        <div className="max-w-[1600px] mx-auto px-2.5 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3">
+          {/* বাম পাশ: মোবাইল মেনু + লোগো + লোকেশন */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+            <button
+              type="button"
+              aria-label="মেনু খুলুন"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden p-1.5 rounded-xl text-gray-700 hover:bg-green-50 hover:text-green-600 transition shrink-0 cursor-pointer"
             >
-              <MapPin className="w-3.5 h-3.5 text-green-600 shrink-0" />
-              <span className="truncate">{locationLabel}</span>
+              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
 
+            <Link href="/" className="flex items-center gap-1 text-green-600 font-extrabold text-sm sm:text-xl shrink-0">
+              <Store className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
+              <span className="truncate">উপজেলা বাজার</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsLocModalOpen(true)}
+              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-800 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold border border-green-200 max-w-[85px] min-[380px]:max-w-[115px] sm:max-w-56 min-w-0 cursor-pointer"
+            >
+              <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-600 shrink-0" />
+              <span className="truncate">{locationLabel}</span>
+            </button>
           </div>
 
-          <div className="hidden md:flex flex-1 max-w-sm relative">
+          {/* মাঝখান: ডেস্কটপ সার্চ বার */}
+          <div className="hidden md:flex flex-1 max-w-md relative">
             <input
               type="text"
               placeholder="পণ্য, দোকানের নাম বা দোকানদারের নাম লিখুন..."
@@ -123,170 +119,105 @@ export default function HomeHeader({
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
 
-                 <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-         {/* রোল অনুযায়ী ডাইনামিক ড্যাশবোর্ড বাটন */}
-         {currentUser?.role === "seller" && (
-           <>
-             <Link
-               href="/seller/orders"
-               className="text-xs sm:text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition"
-             >
-               অর্ডার ড্যাশবোর্ড
-             </Link>
-             <Link
-               href="/seller/dashboard"
-               className="text-xs sm:text-sm font-semibold text-gray-600 hover:text-green-600 hidden md:block"
-             >
-               পণ্য যোগ করুন
-             </Link>
-           </>
-         )}
+          {/* ডান পাশ: রোল বাটন ও ব্যাগ */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <div className="hidden lg:flex items-center gap-2.5">
+              {currentUser?.role === "seller" && (
+                <Link href="/seller/orders" className="text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 transition whitespace-nowrap">
+                  অর্ডার ড্যাশবোর্ড
+                </Link>
+              )}
+              {currentUser?.role === "rider" && (
+                <Link href="/rider/dashboard" className="text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3.5 py-1.5 rounded-full border border-blue-200 transition whitespace-nowrap">
+                  রাইডার প্যানেল
+                </Link>
+              )}
+              {currentUser?.role === "customer" && (
+                <Link href="/orders" className="text-sm font-semibold text-gray-700 hover:text-green-600 whitespace-nowrap">
+                  আমার অর্ডার
+                </Link>
+              )}
+              {!currentUser && (
+                <Link href="/login" className="text-sm font-bold text-gray-700 hover:text-green-600 px-2 whitespace-nowrap">
+                  লগইন
+                </Link>
+              )}
+            </div>
 
-         {currentUser?.role === "rider" && (
-           <Link
-             href="/rider/dashboard"
-             className="text-xs sm:text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full border border-blue-200 transition"
-           >
-             রাইডার প্যানেল
-           </Link>
-         )}
-
-         {currentUser?.role === "customer" && (
-           <Link
-             href="/orders"
-             className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-green-600 hidden sm:block"
-           >
-             আমার অর্ডার
-           </Link>
-         )}
-
-         {!currentUser && (
-           <Link
-             href="/login"
-             className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-green-600 px-2"
-           >
-             লগইন
-           </Link>
-         )}
-
-         {/* ব্যাগ / কার্ট বাটন (একদম আগের মতোই) */}
-         <button
-           onClick={onOpenCart}
-           className="bg-green-600 hover:bg-green-700 text-white px-3.5 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer"
-         >
-           <ShoppingCart className="w-4 h-4" />
-           <span>ব্যাগ</span>
-           <span className="bg-amber-400 text-gray-900 text-xs font-extrabold px-2 py-0.5 rounded-full">
-             {totalCartItems}
-           </span>
-         </button>
-       </div>
-
+            {isCustomerOrGuest && (
+              <button
+                type="button"
+                onClick={onOpenCart}
+                className="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0"
+              >
+                <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">ব্যাগ</span>
+                <span className="bg-amber-400 text-gray-900 text-[11px] sm:text-xs font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full">
+                  {totalCartItems}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </nav>
 
-      <section className="max-w-6xl mx-auto px-4 pt-4">
-        <div className={`${activePromo.bg} rounded-2xl p-6 sm:p-10 text-white relative overflow-hidden shadow-md`}>
-          <div className="max-w-2xl mx-auto text-center space-y-3">
-            <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">{activePromo.badge}</span>
-            <h1 className="text-2xl sm:text-4xl font-extrabold">{activePromo.title}</h1>
-            <p className="text-green-50 text-xs sm:text-sm">{activePromo.subtitle}</p>
-            <form onSubmit={handleTrackSubmit} className="max-w-md mx-auto pt-2 flex items-center bg-white rounded-full p-1 shadow-lg">
-              <PackageSearch className="w-5 h-5 text-gray-400 ml-3 shrink-0" />
-              <input
-                type="text"
-                placeholder="অর্ডার টোকেন আইডি দিয়ে ট্র্যাক করুন..."
-                value={trackId}
-                onChange={(e) => setTrackId(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs sm:text-sm text-gray-800 outline-none bg-transparent"
-              />
-              <button type="submit" className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2 rounded-full shrink-0">
-                ট্র্যাক করুন
-              </button>
-            </form>
+      {/* হিরো ব্যানার (ট্র্যাকিং ইনপুট ছাড়া ক্লিন ও কম্প্যাক্ট) */}
+          {/* হিরো ব্যানার (ফিক্সড উচ্চতা—স্লাইড পরিবর্তনে আর কাঁপবে না) */}
+      <section className="max-w-[1600px] mx-auto px-2.5 sm:px-4 pt-1.5 sm:pt-4 w-full">
+        <div
+          className={`${activePromo.bg} rounded-xl sm:rounded-2xl px-3 py-3 sm:py-8 md:py-10 sm:px-10 text-white relative overflow-hidden shadow-sm min-h-[82px] sm:min-h-[155px] md:min-h-[185px] flex items-center justify-center transition-colors duration-300`}
+        >
+          <div className="max-w-2xl mx-auto text-center space-y-1 sm:space-y-2.5 px-6 sm:px-10 w-full">
+            <span className="hidden sm:inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
+              {activePromo.badge}
+            </span>
+            <h1 className="text-xs min-[380px]:text-sm sm:text-2xl md:text-4xl font-extrabold leading-snug">
+              {activePromo.title}
+            </h1>
+            <p className="hidden md:block text-green-50 text-sm leading-relaxed">
+              {activePromo.subtitle}
+            </p>
           </div>
-          <button onClick={() => setCurrentSlide((p) => (p === 0 ? PROMO_SLIDES.length - 1 : p - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 p-1.5 rounded-full text-white">
-            <ChevronLeft className="w-5 h-5" />
+
+          <button
+            type="button"
+            aria-label="পূর্ববর্তী স্লাইড"
+            onClick={() => setCurrentSlide((p) => (p === 0 ? PROMO_SLIDES.length - 1 : p - 1))}
+            className="absolute left-1.5 sm:left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 p-1 sm:p-1.5 rounded-full text-white cursor-pointer"
+          >
+            <ChevronLeft className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
           </button>
-          <button onClick={() => setCurrentSlide((p) => (p + 1) % PROMO_SLIDES.length)} className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 p-1.5 rounded-full text-white">
-            <ChevronRight className="w-5 h-5" />
+          <button
+            type="button"
+            aria-label="পরবর্তী স্লাইড"
+            onClick={() => setCurrentSlide((p) => (p + 1) % PROMO_SLIDES.length)}
+            className="absolute right-1.5 sm:right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 p-1 sm:p-1.5 rounded-full text-white cursor-pointer"
+          >
+            <ChevronRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
           </button>
         </div>
       </section>
 
-      {isLocModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-extrabold text-gray-800 text-lg flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-green-600" /> আপনার এলাকা নির্বাচন করুন
-              </h3>
-              <button onClick={() => setIsLocModalOpen(false)} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
-            </div>
 
-            <form onSubmit={handleSaveLocation} className="space-y-3 text-sm">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">১. জেলা</label>
-                <SearchableSelect
-                  options={districts}
-                  value={tempLoc?.district || "সকল জেলা (সারা বাংলাদেশ)"}
-                  placeholder="জেলা লিখুন বা নির্বাচন করুন..."
-                  required={false}
-                  onChange={(val) => {
-                    const selectedDist = val === "সকল জেলা (সারা বাংলাদেশ)" ? "" : val;
-                    setTempLoc({ district: selectedDist, upazila: "", union: "", moholla: "" });
-                  }}
-                />
-              </div>
+      <MobileSidebarDrawer
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        locationLabel={locationLabel}
+        onOpenLocation={() => setIsLocModalOpen(true)}
+        currentUser={currentUser}
+        totalCartItems={totalCartItems}
+        onOpenCart={onOpenCart}
+        wishlistCount={wishlistCount}
+        onOpenWishlist={onOpenWishlist}
+        onSelectCategory={onSelectCategory}
+      />
 
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">২. উপজেলা / থানা</label>
-                <SearchableSelect
-                  options={upazilas}
-                  value={tempLoc?.upazila || ""}
-                  placeholder={tempLoc?.district ? "উপজেলা লিখুন বা নির্বাচন করুন..." : "আগে জেলা নির্বাচন করুন"}
-                  disabled={!tempLoc?.district}
-                  required={false}
-                  onChange={(val) => {
-                    const selectedUpz = val === "সকল উপজেলা" ? "" : val;
-                    setTempLoc({ ...tempLoc, upazila: selectedUpz, union: "", moholla: "" });
-                  }}
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">৩. ইউনিয়ন / পৌরসভা</label>
-                <SearchableSelect
-                  options={unions}
-                  value={tempLoc?.union || ""}
-                  placeholder={tempLoc?.upazila ? "ইউনিয়ন লিখুন বা নির্বাচন করুন..." : "আগে উপজেলা নির্বাচন করুন"}
-                  disabled={!tempLoc?.upazila}
-                  required={false}
-                  onChange={(val) => {
-                    const selectedUni = val === "সকল ইউনিয়ন" ? "" : val;
-                    setTempLoc({ ...tempLoc, union: selectedUni, moholla: "" });
-                  }}
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">৪. মহল্লা / গ্রাম / রোড</label>
-                <input
-                  type="text"
-                  placeholder="উদাঃ থানা রোড, কমলপুর..."
-                  value={tempLoc?.moholla || ""}
-                  onChange={(e) => setTempLoc({ ...tempLoc, moholla: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-green-500"
-                />
-              </div>
-
-              <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
-                <Check className="w-4 h-4" /> লোকেশন নিশ্চিত করুন
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      <LocationModal
+        isOpen={isLocModalOpen}
+        onClose={() => setIsLocModalOpen(false)}
+        location={location}
+        onSave={handleSaveLocation}
+      />
     </>
   );
 }

@@ -10,18 +10,28 @@ const FEATURES = [
 
 export default function ServiceHighlights() {
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-30">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="max-w-[1600px] mx-auto px-3 sm:px-4 -mt-4 sm:-mt-6 relative z-30">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3.5">
         {FEATURES.map((item, idx) => {
           const Icon = item.icon;
           return (
-            <div key={idx} className="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
-                <Icon className="w-5 h-5" />
+            <div
+              key={idx}
+              className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl shadow-md sm:shadow-sm border border-gray-100 flex items-center gap-1.5 sm:gap-3 min-w-0"
+            >
+              {/* বামে আইকন */}
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h3 className="font-bold text-gray-800 text-xs sm:text-sm">{item.title}</h3>
-                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 line-clamp-1">{item.desc}</p>
+
+              {/* ডানে: ওপরে নাম, নিচে বিবরণ */}
+              <div className="min-w-0 flex-1 text-left">
+                <h3 className="font-bold text-gray-800 text-[10px] min-[380px]:text-[11px] sm:text-sm leading-tight">
+                  {item.title}
+                </h3>
+                <p className="text-[9px] min-[380px]:text-[10px] sm:text-xs text-gray-500 mt-0.5 line-clamp-2 sm:line-clamp-1 leading-tight">
+                  {item.desc}
+                </p>
               </div>
             </div>
           );
