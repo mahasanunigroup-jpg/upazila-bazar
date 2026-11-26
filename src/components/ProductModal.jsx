@@ -4,8 +4,15 @@ import React from "react";
 import Link from "next/link";
 import { X, ShoppingCart, Store, MapPin } from "lucide-react";
 
-export default function ProductModal({ product, onClose, onAddToCart }) {
+export default function ProductModal({
+  product,
+  onClose,
+  onAddToCart,
+  userRole = null,
+}) {
   if (!product) return null;
+
+  const isSellerOrRider = userRole === "seller" || userRole === "rider";
 
   const cleanDescription = product.description
     ? product.description
@@ -14,11 +21,10 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
         .trim()
     : "";
 
-    const rawTitle = product.title || "";
+  const rawTitle = product.title || "";
   const parenIndex = rawTitle.indexOf("(");
   const mainTitle = parenIndex > 0 ? rawTitle.slice(0, parenIndex).trim() : rawTitle;
   const unitTitle = parenIndex > 0 ? rawTitle.slice(parenIndex).trim() : "";
-
 
   const locationText = [product.moholla, product.union, product.upazila]
     .filter(Boolean)
@@ -56,7 +62,6 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
 
         {/* মাঝখানের তথ্য অংশ */}
         <div className="p-3.5 sm:p-5 space-y-3 overflow-y-auto flex-1">
-          {/* ওপরের সারি: বামে ক্যাটাগরি, ডানে দোকান ও লোকেশন */}
           <div className="flex items-start justify-between gap-2">
             <span className="bg-green-50 text-green-700 text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full shrink-0">
               {product.category}
@@ -78,7 +83,6 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
             </div>
           </div>
 
-          {/* প্রোডাক্টের নাম (ছোট ইউনিটসহ) ও ঠিক নিচেই বিবরণ */}
           <div>
             <h3 className="text-gray-800 leading-snug">
               <span className="text-lg sm:text-xl font-extrabold">
@@ -98,7 +102,6 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
             )}
           </div>
 
-          {/* দাম */}
           <div className="pt-0.5">
             <p className="text-xl sm:text-2xl font-extrabold text-green-600">
               ৳ {Number(product.price || 0).toLocaleString("bn-BD")} টাকা
@@ -108,16 +111,19 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
 
         {/* নিচের ফিক্সড বাটন অংশ */}
         <div className="p-3 sm:p-4 bg-gray-50/70 border-t border-gray-100 space-y-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              onAddToCart(product);
-              onClose();
-            }}
-            className="w-full bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-bold py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer active:scale-[0.99]"
-          >
-            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" /> কার্টে যোগ করুন
-          </button>
+          {/* শুধুমাত্র কাস্টমার ও গেস্টের জন্য কার্ট বাটন দেখাবে (সেলার ও রাইডারের জন্য হাইড) */}
+          {!isSellerOrRider && (
+            <button
+              type="button"
+              onClick={() => {
+                onAddToCart(product);
+                onClose();
+              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-bold py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer active:scale-[0.99]"
+            >
+              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" /> কার্টে যোগ করুন
+            </button>
+          )}
 
           <Link
             href={`/product/${product._id}`}

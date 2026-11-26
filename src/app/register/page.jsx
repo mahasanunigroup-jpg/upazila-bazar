@@ -1,40 +1,44 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { BD_LOCATIONS } from '@/data/bdLocations';
-import SearchableSelect from '@/components/SearchableSelect';
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { BD_LOCATIONS } from "@/data/bdLocations";
+import SearchableSelect from "@/components/SearchableSelect";
+import { ArrowLeft } from "lucide-react";
 
 export default function Register() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    phone: '',
-    role: 'customer',
-    shopName: '',
-    marketName: '',
-    district: '',
-    upazila: '',
-    union: '',
-    moholla: '',
-    address: ''
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    role: "customer",
+    shopName: "",
+    marketName: "",
+    district: "",
+    upazila: "",
+    union: "",
+    moholla: "",
+    address: "",
   });
 
   const [existingMarkets, setExistingMarkets] = useState([]);
   const [loadingMarkets, setLoadingMarkets] = useState(false);
   const [isCustomMarket, setIsCustomMarket] = useState(false);
 
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const districts = Object.keys(BD_LOCATIONS);
-  const upazilas = formData.district ? Object.keys(BD_LOCATIONS[formData.district] || {}) : [];
-  const unions = (formData.district && formData.upazila)
-    ? (BD_LOCATIONS[formData.district]?.[formData.upazila] || [])
+  const upazilas = formData.district
+    ? Object.keys(BD_LOCATIONS[formData.district] || {})
     : [];
+  const unions =
+    formData.district && formData.upazila
+      ? BD_LOCATIONS[formData.district]?.[formData.upazila] || []
+      : [];
 
   useEffect(() => {
     if (!formData.district || !formData.upazila || !formData.union) {
@@ -62,7 +66,7 @@ export default function Register() {
           setIsCustomMarket(false);
         }
       } catch (err) {
-        console.error('Market fetch error:', err);
+        console.error("Market fetch error:", err);
         setIsCustomMarket(true);
       } finally {
         setLoadingMarkets(false);
@@ -74,12 +78,12 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
+    setMessage("");
+    setError("");
     setLoading(true);
 
     const finalMarketOrMoholla =
-      formData.role === 'seller'
+      formData.role === "seller"
         ? formData.marketName.trim()
         : formData.moholla.trim();
 
@@ -90,10 +94,10 @@ export default function Register() {
     };
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -101,19 +105,19 @@ export default function Register() {
       if (res.ok) {
         if (formData.district && formData.upazila) {
           localStorage.setItem(
-            'upazila_full_location',
+            "upazila_full_location",
             JSON.stringify({
               district: formData.district,
               upazila: formData.upazila,
-              union: formData.union || '',
-              moholla: finalMarketOrMoholla || '',
-            })
+              union: formData.union || "",
+              moholla: finalMarketOrMoholla || "",
+            }),
           );
         }
 
         setMessage("নিবন্ধন সফল হয়েছে! লগইন পেজে নিয়ে যাওয়া হচ্ছে...");
         setTimeout(() => {
-          router.push('/login');
+          router.push("/login");
         }, 1500);
       } else {
         setError(data.error || "কিছু একটা ভুল হয়েছে।");
@@ -129,26 +133,32 @@ export default function Register() {
       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
         উপজেলা বাজার - রেজিস্ট্রেশন
       </h2>
-
+      <div className="mb-3">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-600 hover:text-green-600 transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>হোম পেজে ফিরুন</span>
+        </Link>
+      </div>
       {message && (
         <p className="mb-4 text-center font-semibold text-green-700 bg-green-50 p-3 rounded-lg border border-green-200">
           {message}
         </p>
       )}
-
       {error && (
         <p className="mb-4 text-center font-semibold text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
           {error}
         </p>
       )}
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
           placeholder="আপনার পূর্ণ নাম"
           className="w-full p-2.5 border rounded-lg focus:outline-orange-500"
           value={formData.name}
-          onChange={e => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
         />
 
@@ -157,7 +167,7 @@ export default function Register() {
           placeholder="ইমেইল ঠিকানা"
           className="w-full p-2.5 border rounded-lg focus:outline-orange-500"
           value={formData.email}
-          onChange={e => setFormData({ ...formData, email: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
         />
 
@@ -166,7 +176,7 @@ export default function Register() {
           placeholder="মোবাইল নম্বর (যেমন: 017XXXXXXXX)"
           className="w-full p-2.5 border rounded-lg focus:outline-orange-500"
           value={formData.phone}
-          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
           required
         />
 
@@ -175,21 +185,25 @@ export default function Register() {
           placeholder="পাসওয়ার্ড দিন"
           className="w-full p-2.5 border rounded-lg focus:outline-orange-500"
           value={formData.password}
-          onChange={e => setFormData({ ...formData, password: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, password: e.target.value })
+          }
           required
         />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">অ্যাকাউন্টের ধরন</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            অ্যাকাউন্টের ধরন
+          </label>
           <select
             className="w-full p-2.5 border rounded-lg bg-white focus:outline-orange-500"
             value={formData.role}
-            onChange={e =>
+            onChange={(e) =>
               setFormData({
                 ...formData,
                 role: e.target.value,
-                shopName: '',
-                marketName: ''
+                shopName: "",
+                marketName: "",
               })
             }
           >
@@ -204,7 +218,13 @@ export default function Register() {
           value={formData.district}
           placeholder="জেলা লিখুন বা নির্বাচন করুন..."
           onChange={(val) =>
-            setFormData({ ...formData, district: val, upazila: '', union: '', marketName: '' })
+            setFormData({
+              ...formData,
+              district: val,
+              upazila: "",
+              union: "",
+              marketName: "",
+            })
           }
         />
 
@@ -214,7 +234,12 @@ export default function Register() {
           placeholder="উপজেলা লিখুন বা নির্বাচন করুন..."
           disabled={!formData.district}
           onChange={(val) =>
-            setFormData({ ...formData, upazila: val, union: '', marketName: '' })
+            setFormData({
+              ...formData,
+              upazila: val,
+              union: "",
+              marketName: "",
+            })
           }
         />
 
@@ -224,11 +249,11 @@ export default function Register() {
           placeholder="ইউনিয়ন / এলাকা লিখুন বা নির্বাচন করুন..."
           disabled={!formData.upazila}
           onChange={(val) =>
-            setFormData({ ...formData, union: val, marketName: '' })
+            setFormData({ ...formData, union: val, marketName: "" })
           }
         />
 
-        {formData.role === 'seller' && (
+        {formData.role === "seller" && (
           <div className="space-y-3 p-3.5 rounded-xl border border-orange-200 bg-orange-50/40">
             <p className="text-xs font-semibold text-orange-700">
               দোকান ও বাজারের তথ্য
@@ -239,13 +264,16 @@ export default function Register() {
               placeholder="আপনার দোকানের নাম (যেমন: বিসমিল্লাহ স্টোর)"
               className="w-full p-2.5 border border-orange-300 bg-white rounded-lg focus:outline-orange-500"
               value={formData.shopName}
-              onChange={e => setFormData({ ...formData, shopName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, shopName: e.target.value })
+              }
               required
             />
 
             {!formData.union ? (
               <p className="text-xs text-gray-500 bg-white p-2.5 rounded-lg border border-dashed border-orange-300">
-                আগে উপর থেকে আপনার জেলা, উপজেলা ও ইউনিয়ন নির্বাচন করুন—তাহলে ওই ইউনিয়নের বাজারের লিস্ট দেখাবে।
+                আগে উপর থেকে আপনার জেলা, উপজেলা ও ইউনিয়ন নির্বাচন করুন—তাহলে ওই
+                ইউনিয়নের বাজারের লিস্ট দেখাবে।
               </p>
             ) : loadingMarkets ? (
               <p className="text-xs text-orange-600 animate-pulse p-2">
@@ -256,12 +284,12 @@ export default function Register() {
                 {existingMarkets.length > 0 && (
                   <select
                     className="w-full p-2.5 border border-orange-300 bg-white rounded-lg focus:outline-orange-500 text-sm"
-                    value={isCustomMarket ? '__NEW__' : formData.marketName}
+                    value={isCustomMarket ? "__NEW__" : formData.marketName}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === '__NEW__') {
+                      if (val === "__NEW__") {
                         setIsCustomMarket(true);
-                        setFormData({ ...formData, marketName: '' });
+                        setFormData({ ...formData, marketName: "" });
                       } else {
                         setIsCustomMarket(false);
                         setFormData({ ...formData, marketName: val });
@@ -269,13 +297,17 @@ export default function Register() {
                     }}
                     required={!isCustomMarket}
                   >
-                    <option value="">-- {formData.union}-এর বাজার নির্বাচন করুন --</option>
+                    <option value="">
+                      -- {formData.union}-এর বাজার নির্বাচন করুন --
+                    </option>
                     {existingMarkets.map((m) => (
                       <option key={m} value={m}>
                         🏪 {m}
                       </option>
                     ))}
-                    <option value="__NEW__">➕ লিস্টে নেই? নতুন বাজারের নাম লিখুন</option>
+                    <option value="__NEW__">
+                      ➕ লিস্টে নেই? নতুন বাজারের নাম লিখুন
+                    </option>
                   </select>
                 )}
 
@@ -285,7 +317,9 @@ export default function Register() {
                     placeholder="নতুন বাজার / হাটের নাম লিখুন (যেমন: আমতলা বাজার)"
                     className="w-full p-2.5 border border-orange-300 bg-white rounded-lg focus:outline-orange-500 text-sm"
                     value={formData.marketName}
-                    onChange={e => setFormData({ ...formData, marketName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, marketName: e.target.value })
+                    }
                     required
                   />
                 )}
@@ -294,26 +328,30 @@ export default function Register() {
           </div>
         )}
 
-        {formData.role !== 'seller' && (
+        {formData.role !== "seller" && (
           <input
             type="text"
             placeholder="গ্রাম / মহল্লা / নিকটস্থ বাজারের নাম (ঐচ্ছিক)"
             className="w-full p-2.5 border rounded-lg focus:outline-orange-500"
             value={formData.moholla}
-            onChange={e => setFormData({ ...formData, moholla: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, moholla: e.target.value })
+            }
           />
         )}
 
         <textarea
           rows="2"
           placeholder={
-            formData.role === 'seller'
+            formData.role === "seller"
               ? "দোকানের গলি/রাস্তা বা বিস্তারিত ঠিকানা"
               : "গ্রাম/মহল্লা, রোড নম্বর এবং বিস্তারিত ঠিকানা"
           }
           className="w-full p-2.5 border rounded-lg focus:outline-orange-500"
           value={formData.address}
-          onChange={e => setFormData({ ...formData, address: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, address: e.target.value })
+          }
           required
         ></textarea>
 
@@ -325,10 +363,12 @@ export default function Register() {
           {loading ? "অপেক্ষা করুন..." : "রেজিস্ট্রেশন করুন"}
         </button>
       </form>
-
       <p className="mt-4 text-center text-sm text-gray-600">
-        আগে থেকেই অ্যাকাউন্ট আছে?{' '}
-        <Link href="/login" className="text-orange-600 font-semibold hover:underline">
+        আগে থেকেই অ্যাকাউন্ট আছে?{" "}
+        <Link
+          href="/login"
+          className="text-orange-600 font-semibold hover:underline"
+        >
           লগইন করুন
         </Link>
       </p>

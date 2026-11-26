@@ -30,29 +30,39 @@ const PROMO_SLIDES = [
 ];
 
 export default function HomeHeader({
+  initialUser = null,
+  selectedCategory = "সব পণ্য",
+  marketProps = null,
   searchQuery,
   setSearchQuery,
   location,
   setLocation,
   totalCartItems,
+  externalOpenDrawer = false,
+  onDrawerOpened,
   onOpenCart,
   wishlistCount,
   onOpenWishlist,
   onSelectCategory,
 }) {
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLocModalOpen, setIsLocModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(initialUser);
 
   useEffect(() => {
+    if (initialUser) {
+      setCurrentUser(initialUser);
+      return;
+    }
     fetch("/api/auth/me")
       .then((res) => res.json())
       .then((data) => {
         if (data?.user) setCurrentUser(data.user);
       })
       .catch(() => {});
-  }, []);
+  }, [initialUser]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -60,6 +70,22 @@ export default function HomeHeader({
     }, 5000);
     return () => clearInterval(timer);
   }, []);
+
+
+    useEffect(() => {
+    const openModalHandler = () => setIsLocModalOpen(true);
+    window.addEventListener("open_location_modal", openModalHandler);
+    return () => window.removeEventListener("open_location_modal", openModalHandler);
+  }, []);
+
+
+    useEffect(() => {
+    if (externalOpenDrawer) {
+      setIsMobileMenuOpen(true);
+      if (onDrawerOpened) onDrawerOpened();
+    }
+  }, [externalOpenDrawer, onDrawerOpened]);
+
 
   const handleSaveLocation = (cleanedLoc) => {
     setLocation(cleanedLoc);
@@ -75,34 +101,38 @@ export default function HomeHeader({
     ? `${location.upazila}, ${location.district}`
     : location?.district || "সারা বাংলাদেশ";
 
-  const isCustomerOrGuest = currentUser?.role !== "seller" && currentUser?.role !== "rider";
+  const isCustomerOrGuest =
+    currentUser?.role !== "seller" && currentUser?.role !== "rider";
 
   return (
     <>
-      <nav className="bg-white shadow-xs sticky top-0 z-40 border-b border-gray-100 w-full">
-        <div className="max-w-[1600px] mx-auto px-2.5 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3">
-          {/* বাম পাশ: মোবাইল মেনু + লোগো + লোকেশন */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+             <nav className="bg-white shadow-xs sticky top-0 z-40 border-b border-gray-100 w-full">
+        <div className="max-w-[1600px] mx-auto px-1.5 sm:px-4 h-11 sm:h-16 flex items-center justify-between gap-1 sm:gap-3">
+          {/* বাম পাশ: স্লিম মেনু + ছোট সাইট লোগো + লোকেশন */}
+          <div className="flex items-center gap-1 sm:gap-2.5 min-w-0 flex-1">
             <button
               type="button"
               aria-label="মেনু খুলুন"
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-1.5 rounded-xl text-gray-700 hover:bg-green-50 hover:text-green-600 transition shrink-0 cursor-pointer"
+              className="lg:hidden p-1 rounded-lg text-gray-700 hover:bg-green-50 hover:text-green-600 transition shrink-0 cursor-pointer"
             >
-              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Menu className="w-4 h-4 sm:w-6 sm:h-6" />
             </button>
 
-            <Link href="/" className="flex items-center gap-1 text-green-600 font-extrabold text-sm sm:text-xl shrink-0">
-              <Store className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
-              <span className="truncate">উপজেলা বাজার</span>
+            <Link
+              href="/"
+              className="flex items-center gap-0.5 sm:gap-1.5 text-green-600 font-extrabold text-[11px] min-[380px]:text-xs sm:text-xl shrink-0"
+            >
+              <Store className="w-3 h-3 sm:w-6 sm:h-6 shrink-0" />
+              <span>উপজেলা বাজার</span>
             </Link>
 
             <button
               type="button"
               onClick={() => setIsLocModalOpen(true)}
-              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-800 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold border border-green-200 max-w-[85px] min-[380px]:max-w-[115px] sm:max-w-56 min-w-0 cursor-pointer"
+              className="flex items-center gap-0.5 sm:gap-1 bg-green-50 hover:bg-green-100 text-green-800 px-1.5 py-0.5 sm:px-2.5 sm:py-1.5 rounded-full text-[9px] min-[380px]:text-[10px] sm:text-xs font-bold border border-green-200 flex-1 sm:flex-initial sm:max-w-60 min-w-0 cursor-pointer"
             >
-              <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-600 shrink-0" />
+              <MapPin className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-green-600 shrink-0" />
               <span className="truncate">{locationLabel}</span>
             </button>
           </div>
@@ -119,7 +149,7 @@ export default function HomeHeader({
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
 
-          {/* ডান পাশ: রোল বাটন ও ব্যাগ */}
+          {/* ডান পাশ: রোল বাটন ও একদম ছোট ব্যাগ বাটন */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <div className="hidden lg:flex items-center gap-2.5">
               {currentUser?.role === "seller" && (
@@ -148,11 +178,11 @@ export default function HomeHeader({
               <button
                 type="button"
                 onClick={onOpenCart}
-                className="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0"
+                className="bg-green-600 hover:bg-green-700 text-white px-1.5 py-0.5 sm:px-3.5 sm:py-2 rounded-full text-[10px] sm:text-sm font-bold flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0"
               >
-                <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">ব্যাগ</span>
-                <span className="bg-amber-400 text-gray-900 text-[11px] sm:text-xs font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full">
+                <span className="bg-amber-400 text-gray-900 text-[9px] sm:text-xs font-extrabold px-1 sm:px-2 py-0.2 rounded-full leading-tight">
                   {totalCartItems}
                 </span>
               </button>
@@ -160,6 +190,8 @@ export default function HomeHeader({
           </div>
         </div>
       </nav>
+
+
 
       {/* হিরো ব্যানার (ট্র্যাকিং ইনপুট ছাড়া ক্লিন ও কম্প্যাক্ট) */}
           {/* হিরো ব্যানার (ফিক্সড উচ্চতা—স্লাইড পরিবর্তনে আর কাঁপবে না) */}
@@ -210,6 +242,8 @@ export default function HomeHeader({
         wishlistCount={wishlistCount}
         onOpenWishlist={onOpenWishlist}
         onSelectCategory={onSelectCategory}
+        selectedCategory={selectedCategory}
+        marketProps={marketProps}
       />
 
       <LocationModal

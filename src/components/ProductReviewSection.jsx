@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import { Star, CheckCircle2, MessageSquare, Send } from "lucide-react";
 
-export default function ProductReviewSection({ productId, onStatsLoaded }) {
+export default function ProductReviewSection({
+  productId,
+  onStatsLoaded,
+  isSellerOrRider = false,
+}) {
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({ averageRating: 0, totalReviews: 0 });
   const [loading, setLoading] = useState(true);
@@ -39,6 +43,7 @@ export default function ProductReviewSection({ productId, onStatsLoaded }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSellerOrRider) return;
     if (!comment.trim()) return alert("অনুগ্রহ করে আপনার মতামত লিখুন!");
 
     setSubmitting(true);
@@ -104,7 +109,7 @@ export default function ProductReviewSection({ productId, onStatsLoaded }) {
         </div>
       </div>
 
-      {/* রিভিউ লেখার ফর্ম */}
+      {/* রিভিউ লেখার ফর্ম (ডিজাইন আগের মতোই থাকবে, সেলার ও রাইডারের জন্য নিষ্ক্রিয়) */}
       <form
         onSubmit={handleSubmit}
         className="bg-gray-50 p-4 sm:p-5 rounded-xl border border-gray-100 space-y-4"
@@ -118,10 +123,13 @@ export default function ProductReviewSection({ productId, onStatsLoaded }) {
               <button
                 key={star}
                 type="button"
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                onClick={() => setRating(star)}
-                className="p-0.5 transition transform hover:scale-110"
+                disabled={isSellerOrRider}
+                onMouseEnter={() => !isSellerOrRider && setHoverRating(star)}
+                onMouseLeave={() => !isSellerOrRider && setHoverRating(0)}
+                onClick={() => !isSellerOrRider && setRating(star)}
+                className={`p-0.5 transition ${
+                  isSellerOrRider ? "cursor-not-allowed opacity-75" : "transform hover:scale-110 cursor-pointer"
+                }`}
               >
                 <Star
                   className={`w-6 h-6 ${
@@ -142,17 +150,22 @@ export default function ProductReviewSection({ productId, onStatsLoaded }) {
           <textarea
             rows={3}
             required
+            disabled={isSellerOrRider}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="পণ্যটির মান, প্যাকেজিং বা ডেলিভারি কেমন লেগেছে তা লিখুন..."
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+            className={`w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
+              isSellerOrRider ? "cursor-not-allowed opacity-75" : ""
+            }`}
           />
         </div>
 
         <button
           type="submit"
-          disabled={submitting}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition inline-flex items-center gap-2 disabled:opacity-50"
+          disabled={submitting || isSellerOrRider}
+          className={`px-5 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl transition inline-flex items-center gap-2 disabled:opacity-60 ${
+            isSellerOrRider ? "cursor-not-allowed" : "hover:bg-emerald-700 cursor-pointer"
+          }`}
         >
           <Send className="w-4 h-4" />
           {submitting ? "জমা হচ্ছে..." : "রিভিউ জমা দিন"}

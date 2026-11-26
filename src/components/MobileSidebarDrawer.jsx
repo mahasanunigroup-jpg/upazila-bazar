@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import CategorySidebar from "@/components/CategorySidebar";
+import UnionMarketSection from "@/components/UnionMarketSection";
 import {
   Store,
   MapPin,
@@ -13,24 +15,12 @@ import {
   Truck,
   ClipboardList,
   LogIn,
+  UserPlus,
   LogOut,
   Heart,
   PhoneCall,
   UserCheck,
-  Grid,
 } from "lucide-react";
-
-const QUICK_CATEGORIES = [
-  { label: "সব পণ্য", value: "সব পণ্য" },
-  { label: "মুদি বাজার", value: "মুদি" },
-  { label: "তাজা শাক-সবজি", value: "সবজি" },
-  { label: "মাছ ও মাংস", value: "মাছ ও মাংস" },
-  { label: "ওষুধ ও ফার্মেসি", value: "ওষুধ ও ফার্মেসি" },
-  { label: "রেস্টুরেন্ট ও বিরিয়ানি", value: "রেস্টুরেন্ট ও বিরিয়ানি" },
-  { label: "ফাস্ট ফুড", value: "ফাস্ট ফুড" },
-  { label: "কাপড় ও গার্মেন্টস", value: "কাপড় ও গার্মেন্টস" },
-  { label: "মোবাইল ও ইলেকট্রনিক্স", value: "মোবাইল ও ইলেকট্রনিক্স" },
-];
 
 export default function MobileSidebarDrawer({
   isOpen,
@@ -42,9 +32,31 @@ export default function MobileSidebarDrawer({
   onOpenCart,
   wishlistCount = 0,
   onOpenWishlist,
+  selectedCategory = "সব পণ্য",
   onSelectCategory,
+  marketProps = null,
 }) {
   const router = useRouter();
+  const [hasRegistered, setHasRegistered] = useState(false);
+
+   useEffect(() => {
+    try {
+      const regFlag = localStorage.getItem("upazila_registered");
+      setHasRegistered(regFlag === "true");
+    } catch {
+      setHasRegistered(false);
+    }
+  }, [isOpen]);
+
+
+  useEffect(() => {
+    if (currentUser) {
+      try {
+        localStorage.setItem("upazila_registered", "true");
+        setHasRegistered(true);
+      } catch {}
+    }
+  }, [currentUser]);
 
   if (!isOpen) return null;
 
@@ -70,7 +82,7 @@ export default function MobileSidebarDrawer({
       >
         <div>
           {/* ড্রয়ার হেডার */}
-          <div className="p-4 bg-green-600 text-white flex items-center justify-between">
+          <div className="p-4 bg-green-600 text-white flex items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-2 font-extrabold text-base">
               <Store className="w-5 h-5" />
               <span>উপজেলা বাজার</span>
@@ -107,7 +119,9 @@ export default function MobileSidebarDrawer({
 
           {/* বর্তমান লোকেশন */}
           <div className="p-3.5 border-b border-gray-100 bg-gray-50/70">
-            <p className="text-[11px] font-semibold text-gray-500">আপনার নির্বাচিত এলাকা</p>
+            <p className="text-[11px] font-semibold text-gray-500">
+              আপনার নির্বাচিত এলাকা
+            </p>
             <div className="flex items-center justify-between gap-2 mt-1">
               <span className="text-xs font-bold text-green-800 flex items-center gap-1 truncate">
                 <MapPin className="w-3.5 h-3.5 text-green-600 shrink-0" />
@@ -125,7 +139,6 @@ export default function MobileSidebarDrawer({
               </button>
             </div>
           </div>
-
           {/* মেনু ও ড্যাশবোর্ড লিংক */}
           <div className="p-3 space-y-1 border-b border-gray-100">
             <p className="px-2.5 py-1 text-[11px] font-bold text-gray-400 uppercase">
@@ -143,6 +156,13 @@ export default function MobileSidebarDrawer({
                 </Link>
                 <Link
                   href="/seller/dashboard"
+                  onClick={onClose}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <LayoutDashboard className="w-4 h-4 text-green-600" /> সেলার ড্যাশবোর্ড
+                </Link>
+                <Link
+                  href="/seller/add-product"
                   onClick={onClose}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50"
                 >
@@ -173,15 +193,25 @@ export default function MobileSidebarDrawer({
 
             {!currentUser && (
               <Link
-                href="/login"
+                href={hasRegistered ? "/login" : "/register"}
                 onClick={onClose}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-green-700 bg-green-50"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-green-700 bg-green-50 hover:bg-green-100 transition"
               >
-                <LogIn className="w-4 h-4" /> লগইন / রেজিস্ট্রেশন
+                {hasRegistered ? (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>লগইন করুন</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>রেজিস্ট্রেশন করুন</span>
+                  </>
+                )}
               </Link>
             )}
 
-                        {/* শুধুমাত্র কাস্টমার বা গেস্ট ইউজারদের জন্য শপিং ব্যাগ ও পছন্দের তালিকা */}
+            {/* শুধুমাত্র কাস্টমার বা গেস্ট ইউজারদের জন্য শপিং ব্যাগ ও পছন্দের তালিকা */}
             {currentUser?.role !== "seller" && currentUser?.role !== "rider" && (
               <>
                 <button
@@ -219,48 +249,52 @@ export default function MobileSidebarDrawer({
                 )}
               </>
             )}
-
           </div>
 
-          {/* দ্রুত ক্যাটাগরি শর্টকাট */}
-          {onSelectCategory && (
-            <div className="p-3 space-y-1">
-              <p className="px-2.5 py-1 text-[11px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                <Grid className="w-3 h-3" /> জনপ্রিয় ক্যাটাগরি
-              </p>
-              <div className="grid grid-cols-1 gap-0.5">
-                {QUICK_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => {
-                      onSelectCategory(cat.value);
-                      onClose();
-                    }}
-                    className="text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:bg-green-50 hover:text-green-700 transition cursor-pointer"
-                  >
-                    • {cat.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* মোবাইল ড্রয়ারের ভেতরে এলাকার বাজার ও দোকানসমূহ */}
+          {currentUser?.role !== "seller" &&
+            currentUser?.role !== "rider" &&
+            marketProps && (
+              <UnionMarketSection
+                {...marketProps}
+                inDrawer={true}
+                onCloseDrawer={onClose}
+              />
+            )}
+
+          {/* ডেস্কটপের মতো ভার্টিক্যাল অ্যাকর্ডিয়ন ক্যাটাগরি লিস্ট */}
+          {currentUser?.role !== "seller" && currentUser?.role !== "rider" && (
+            <CategorySidebar
+              inDrawer={true}
+              onCloseDrawer={onClose}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={(cat) => {
+                if (onSelectCategory) onSelectCategory(cat);
+              }}
+              showWishlistOnly={false}
+              setShowWishlistOnly={() => {
+                if (onOpenWishlist) onOpenWishlist();
+              }}
+              hasActiveFilter={selectedCategory !== "সব পণ্য"}
+              resetFilters={() => {
+                if (onSelectCategory) onSelectCategory("সব পণ্য");
+              }}
+            />
           )}
         </div>
 
-        {/* ড্রয়ার ফুটার: সাপোর্ট কল ও লগআউট */}
-        <div className="p-3.5 border-t border-gray-100 space-y-2 bg-gray-50/50">
-          <a
-            href="tel:01700000000"
-            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:border-green-500"
-          >
-            <PhoneCall className="w-3.5 h-3.5 text-green-600" /> সাপোর্ট: ০১৭০০-০০০০০০
-          </a>
+        {/* ড্রয়ার ফুটার (সাপোর্ট ও লগআউট) */}
+        <div className="p-3.5 border-t border-gray-100 bg-gray-50/60 space-y-2">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-gray-600 bg-white py-2 px-3 rounded-xl border border-gray-200">
+            <PhoneCall className="w-3.5 h-3.5 text-green-600 shrink-0" />
+            <span>সাপোর্ট: ০১৭০০-০০০০০০</span>
+          </div>
 
           {currentUser && (
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-red-50 hover:bg-red-100 text-xs font-bold text-red-600 transition cursor-pointer"
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 py-2 rounded-xl transition cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" /> লগআউট করুন
             </button>

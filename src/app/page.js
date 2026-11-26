@@ -1,8 +1,11 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
 import Review from "@/models/Review";
+import User from "@/models/User";
 import HomeClient from "@/components/HomeClient";
 import NoticeBanner from "@/components/NoticeBanner";
 
@@ -14,13 +17,52 @@ function optimizeCloudinaryUrl(url) {
   return url;
 }
 
+async function getInitialUser() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) return null;
+
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    const uid = payload.userId || payload.id || payload._id;
+    if (!uid) return null;
+
+    await connectDB();
+    const dbUser = await User.findById(uid)
+      .select("_id name email role shopName")
+      .lean();
+
+    if (!dbUser) {
+      return {
+        _id: String(uid),
+        id: String(uid),
+        role: payload.role || null,
+        name: payload.name || "",
+        email: payload.email || "",
+        shopName: payload.shopName || "",
+      };
+    }
+
+    return {
+      _id: dbUser._id.toString(),
+      id: dbUser._id.toString(),
+      role: dbUser.role,
+      name: dbUser.name || "",
+      email: dbUser.email || "",
+      shopName: dbUser.shopName || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function getInitialProducts() {
   await connection();
 
   try {
     await connectDB();
 
-    // একসাথে প্রোডাক্ট এবং সব রিভিউ আনা হচ্ছে
     const [rawProducts, allReviews] = await Promise.all([
       Product.find({})
         .select(
@@ -32,14 +74,11 @@ async function getInitialProducts() {
       Review.find({}).select("productId rating").lean(),
     ]);
 
-    // প্রতিটি প্রোডাক্টের জন্য আসল গড় রেটিং হিসাব করা (String বা ObjectId যেভাবেই থাকুক কাজ করবে)
     const ratingMap = {};
     allReviews.forEach((rev) => {
       const pid = rev.productId?.toString();
       if (!pid) return;
-      if (!ratingMap[pid]) {
-        ratingMap[pid] = { sum: 0, count: 0 };
-      }
+      if (!ratingMap[pid]) ratingMap[pid] = { sum: 0, count: 0 };
       ratingMap[pid].sum += Number(rev.rating || 0);
       ratingMap[pid].count += 1;
     });
@@ -64,7 +103,7 @@ async function getInitialProducts() {
         upazila: p.upazila || "",
         union: p.union || "",
         moholla: p.moholla || "",
-        sellerId: p.sellerId ? p.sellerId.toString() : "seller_default",
+        sellerId: p.sellerId ? p.sellerId.toString() : "",
         shopName: p.shopName || "উপজেলা ভেরিফায়েড স্টোর",
         sellerName: p.sellerName || "স্থানীয় বিক্রেতা",
         rating: calculatedRating,
@@ -78,8 +117,11 @@ async function getInitialProducts() {
 }
 
 async function HomeContent() {
-  const initialProducts = await getInitialProducts();
-  return <HomeClient initialProducts={initialProducts} />;
+  const [initialProducts, initialUser] = await Promise.all([
+    getInitialProducts(),
+    getInitialUser(),
+  ]);
+  return <HomeClient initialProducts={initialProducts} initialUser={initialUser} />;
 }
 
 export default function HomePage() {

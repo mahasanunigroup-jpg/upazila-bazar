@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ProductReviewSection from "@/components/ProductReviewSection";
@@ -17,7 +17,7 @@ import {
   Minus,
 } from "lucide-react";
 
-export default function ProductDetailsClient({ product, relatedProducts }) {
+export default function ProductDetailsClient({ product, relatedProducts = [] }) {
   const router = useRouter();
   const images =
     product.images?.length > 0
@@ -27,10 +27,22 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
   const [selectedImage, setSelectedImage] = useState(images);
   const [quantity, setQuantity] = useState(1);
   const [addedFeedback, setAddedFeedback] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user?.role) setUserRole(data.user.role);
+      })
+      .catch(() => {});
+  }, []);
 
   const isOutOfStock = (product.stock || 0) <= 0;
+  const isSellerOrRider = userRole === "seller" || userRole === "rider";
 
   const handleQtyChange = (delta) => {
+    if (isSellerOrRider) return;
     setQuantity((prev) => {
       const next = prev + delta;
       if (next < 1) return 1;
@@ -40,7 +52,7 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
   };
 
   const addToCartStorage = () => {
-    if (isOutOfStock) return false;
+    if (isOutOfStock || isSellerOrRider) return false;
 
     const existingCart = JSON.parse(
       localStorage.getItem("upazila_cart") || "[]"
@@ -70,6 +82,7 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
   };
 
   const handleAddToCart = () => {
+    if (isSellerOrRider) return;
     if (addToCartStorage()) {
       setAddedFeedback(true);
       setTimeout(() => setAddedFeedback(false), 2000);
@@ -77,6 +90,7 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
   };
 
   const handleOrderNow = () => {
+    if (isSellerOrRider) return;
     if (addToCartStorage()) {
       router.push("/checkout");
     }
@@ -110,7 +124,7 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
                   key={idx}
                   type="button"
                   onClick={() => setSelectedImage(img)}
-                  className={`w-16 h-16 rounded-lg overflow-hidden border-2 flex-shrink-0 transition ${
+                  className={`w-16 h-16 rounded-lg overflow-hidden border-2 flex-shrink-0 transition cursor-pointer ${
                     selectedImage === img
                       ? "border-emerald-600"
                       : "border-gray-200 opacity-70 hover:opacity-100"
@@ -126,6 +140,7 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
             </div>
           )}
         </div>
+
         <div className="flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
@@ -133,7 +148,7 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
                 {product.category}
               </span>
 
-              {isOutOfStock ? (
+              {/* {isOutOfStock ? (
                 <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-red-50 text-red-600 rounded-full">
                   <XCircle className="w-3.5 h-3.5" /> স্টক শেষ
                 </span>
@@ -141,7 +156,7 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
                 <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700 rounded-full">
                   <CheckCircle2 className="w-3.5 h-3.5" /> স্টকে আছে ({product.stock} টি)
                 </span>
-              )}
+              )} */}
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-snug">
@@ -150,11 +165,11 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
 
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-extrabold text-emerald-600">
-                ৳{product.price.toLocaleString("bn-BD")}
+                ৳{Number(product.price || 0).toLocaleString("bn-BD")}
               </span>
               {product.oldPrice > product.price && (
                 <span className="text-base text-gray-400 line-through">
-                  ৳{product.oldPrice.toLocaleString("bn-BD")}
+                  ৳{Number(product.oldPrice || 0).toLocaleString("bn-BD")}
                 </span>
               )}
             </div>
@@ -191,16 +206,22 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
                 <div className="inline-flex items-center border border-gray-200 rounded-xl overflow-hidden">
                   <button
                     type="button"
+                    disabled={isSellerOrRider}
                     onClick={() => handleQtyChange(-1)}
-                    className="p-2.5 hover:bg-gray-100 text-gray-600 transition"
+                    className={`p-2.5 text-gray-600 transition ${
+                      isSellerOrRider ? "cursor-not-allowed opacity-70" : "hover:bg-gray-100 cursor-pointer"
+                    }`}
                   >
                     <Minus className="w-4 h-4" />
                   </button>
                   <span className="px-5 font-bold text-gray-800">{quantity}</span>
                   <button
                     type="button"
+                    disabled={isSellerOrRider}
                     onClick={() => handleQtyChange(1)}
-                    className="p-2.5 hover:bg-gray-100 text-gray-600 transition"
+                    className={`p-2.5 text-gray-600 transition ${
+                      isSellerOrRider ? "cursor-not-allowed opacity-70" : "hover:bg-gray-100 cursor-pointer"
+                    }`}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -211,9 +232,11 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || isSellerOrRider}
                 onClick={handleAddToCart}
-                className="py-3.5 px-5 rounded-xl font-bold text-sm border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50 transition flex items-center justify-center gap-2 disabled:opacity-40"
+                className={`py-3.5 px-5 rounded-xl font-bold text-sm border-2 border-emerald-600 text-emerald-700 transition flex items-center justify-center gap-2 disabled:opacity-60 ${
+                  isSellerOrRider ? "cursor-not-allowed" : "hover:bg-emerald-50 cursor-pointer"
+                }`}
               >
                 <ShoppingCart className="w-4 h-4" />
                 {addedFeedback ? "✅ ব্যাগে যোগ হয়েছে!" : "ব্যাগে যোগ করুন"}
@@ -221,9 +244,11 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
 
               <button
                 type="button"
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || isSellerOrRider}
                 onClick={handleOrderNow}
-                className="py-3.5 px-5 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition flex items-center justify-center gap-2 disabled:bg-gray-300"
+                className={`py-3.5 px-5 rounded-xl font-bold text-sm bg-emerald-600 text-white transition flex items-center justify-center gap-2 disabled:opacity-60 ${
+                  isSellerOrRider ? "cursor-not-allowed" : "hover:bg-emerald-700 cursor-pointer"
+                }`}
               >
                 <Zap className="w-4 h-4" />
                 এখনই অর্ডার করুন
@@ -232,39 +257,11 @@ export default function ProductDetailsClient({ product, relatedProducts }) {
           </div>
         </div>
       </div>
-      <ProductReviewSection productId={product._id} />
-      {relatedProducts?.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-800">
-            এই ক্যাটাগরির আরও পণ্য
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {relatedProducts.map((item) => (
-              <Link
-                key={item._id}
-                href={`/product/${item._id}`}
-                className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden group"
-              >
-                <div className="aspect-square bg-gray-50 overflow-hidden">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                  />
-                </div>
-                <div className="p-3">
-                  <p className="text-sm font-semibold text-gray-800 line-clamp-1">
-                    {item.title}
-                  </p>
-                  <p className="text-sm font-bold text-emerald-600 mt-1">
-                    ৳{item.price}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+
+      <ProductReviewSection
+        productId={product._id}
+        isSellerOrRider={isSellerOrRider}
+      />
     </div>
   );
 }

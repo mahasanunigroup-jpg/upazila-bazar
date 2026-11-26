@@ -176,23 +176,37 @@ function CategorySidebar({
   setShowWishlistOnly,
   hasActiveFilter,
   resetFilters,
+  inDrawer = false,
+  onCloseDrawer,
 }) {
   const [expandedMenu, setExpandedMenu] = useState("");
 
   const activeMobileSubs = useMemo(() => {
-    if (showWishlistOnly) return [];
+    if (showWishlistOnly || inDrawer) return [];
     const found = CATEGORY_DATA.find(
       (cat) =>
         cat.value === selectedCategory ||
         cat.sub.some((s) => s.value === selectedCategory)
     );
     return found?.sub || [];
-  }, [selectedCategory, showWishlistOnly]);
+  }, [selectedCategory, showWishlistOnly, inDrawer]);
 
   const handleMainClick = (item) => {
     setShowWishlistOnly(false);
-    setSelectedCategory(item.value);
 
+    if (inDrawer) {
+      if (item.sub.length > 0) {
+        // ড্রয়ারের ভেতরে ক্লিক করলে শুধু ওই ক্যাটাগরির সাব-ক্যাটাগরি খুলবে, বাকিগুলো কলাপ্স থাকবে
+        setExpandedMenu((prev) => (prev === item.value ? "" : item.value));
+      } else {
+        setExpandedMenu("");
+        setSelectedCategory(item.value);
+        if (onCloseDrawer) onCloseDrawer();
+      }
+      return;
+    }
+
+    setSelectedCategory(item.value);
     if (item.sub.length > 0) {
       setExpandedMenu((prev) => (prev === item.value ? "" : item.value));
     } else {
@@ -200,25 +214,51 @@ function CategorySidebar({
     }
   };
 
+  const handleSubClick = (val) => {
+    setShowWishlistOnly(false);
+    setSelectedCategory(val);
+    if (inDrawer && onCloseDrawer) onCloseDrawer();
+  };
+
   return (
-    <aside className="w-full lg:w-64 shrink-0 select-none">
-      <div className="bg-white rounded-2xl shadow-xs border border-gray-100 p-3 lg:p-4 lg:sticky lg:top-20">
+    <aside
+      className={`${
+        inDrawer ? "w-full" : "hidden lg:block lg:w-64"
+      } shrink-0 select-none`}
+    >
+      <div
+        className={
+          inDrawer
+            ? "p-2.5"
+            : "bg-white rounded-2xl shadow-xs border border-gray-100 p-3 lg:p-4 lg:sticky lg:top-20"
+        }
+      >
         <div className="flex items-center justify-between pb-2.5 mb-2.5 lg:pb-3 lg:mb-3 border-b border-gray-100">
-          <h3 className="font-extrabold text-gray-800 text-sm lg:text-base">
+          <h3 className="font-extrabold text-gray-800 text-xs sm:text-sm lg:text-base">
             ক্যাটাগরি সমূহ
           </h3>
           {hasActiveFilter && (
             <button
               type="button"
-              onClick={resetFilters}
-              className="text-xs text-red-500 font-bold flex items-center gap-1 active:scale-95 transition"
+              onClick={() => {
+                setExpandedMenu("");
+                resetFilters();
+                if (inDrawer && onCloseDrawer) onCloseDrawer();
+              }}
+              className="text-xs text-red-500 font-bold flex items-center gap-1 active:scale-95 transition cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" /> রিসেট
             </button>
           )}
         </div>
 
-        <ul className="flex lg:flex-col gap-1.5 overflow-x-auto lg:max-h-[calc(100vh-145px)] lg:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <ul
+          className={
+            inDrawer
+              ? "flex flex-col gap-1"
+              : "flex lg:flex-col gap-1.5 overflow-x-auto lg:max-h-[calc(100vh-145px)] lg:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          }
+        >
           {CATEGORY_DATA.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -228,22 +268,24 @@ function CategorySidebar({
             const isOpen = expandedMenu === item.value;
 
             return (
-              <li key={item.value} className="shrink-0 lg:shrink">
+              <li key={item.value} className={inDrawer ? "" : "shrink-0 lg:shrink"}>
                 <button
                   type="button"
                   onClick={() => handleMainClick(item)}
-                  className={`w-full flex items-center justify-between px-3 py-2 lg:px-3.5 lg:py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-colors active:scale-[0.98] ${
-                    isActive
+                  className={`w-full flex items-center justify-between px-3 py-2 lg:px-3.5 lg:py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-colors active:scale-[0.98] cursor-pointer ${
+                    isActive || (inDrawer && isOpen)
                       ? "bg-green-600 text-white shadow-xs"
-                      : "bg-gray-50 lg:bg-transparent text-gray-700 hover:bg-green-50 hover:text-green-700"
+                      : `${
+                          inDrawer ? "bg-transparent" : "bg-gray-50 lg:bg-transparent"
+                        } text-gray-700 hover:bg-green-50 hover:text-green-700`
                   }`}
                 >
-                  <span className="flex items-center gap-2 lg:gap-2.5">
+                  <span className="flex items-center gap-2 lg:gap-2.5 min-w-0">
                     <Icon className="w-4 h-4 shrink-0" />
-                    <span className="whitespace-nowrap">{item.name}</span>
+                    <span className="truncate">{item.name}</span>
                   </span>
                   {item.sub.length > 0 && (
-                    <span className="hidden lg:inline">
+                    <span className={inDrawer ? "inline" : "hidden lg:inline"}>
                       {isOpen ? (
                         <ChevronDown className="w-4 h-4" />
                       ) : (
@@ -253,23 +295,24 @@ function CategorySidebar({
                   )}
                 </button>
 
+                {/* ডেস্কটপ ও মোবাইল ড্রয়ার—উভয় জায়গায় ভার্টিক্যাল সাব-ক্যাটাগরি ড্রপডাউন */}
                 {isOpen && item.sub.length > 0 && (
-                  <ul className="hidden lg:block mt-1 ml-4 pl-3 border-l-2 border-green-100 space-y-1">
+                  <ul
+                    className={`${
+                      inDrawer ? "flex" : "hidden lg:flex"
+                    } flex-col gap-1 mt-1 ml-4 pl-3 border-l-2 border-green-200 py-1`}
+                  >
                     {item.sub.map((subItem) => {
-                      const activeSub =
-                        !showWishlistOnly && selectedCategory === subItem.value;
+                      const subActive = selectedCategory === subItem.value;
                       return (
                         <li key={subItem.label}>
                           <button
                             type="button"
-                            onClick={() => {
-                              setShowWishlistOnly(false);
-                              setSelectedCategory(subItem.value);
-                            }}
-                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                              activeSub
+                            onClick={() => handleSubClick(subItem.value)}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                              subActive
                                 ? "bg-green-50 text-green-700 font-bold"
-                                : "text-gray-500 hover:text-green-600 hover:bg-gray-50"
+                                : "text-gray-600 hover:bg-gray-50 hover:text-green-700"
                             }`}
                           >
                             • {subItem.label}
@@ -282,50 +325,46 @@ function CategorySidebar({
               </li>
             );
           })}
-
-          <li className="shrink-0 lg:pt-2 lg:mt-2 lg:border-t lg:border-gray-100">
-            <button
-              type="button"
-              onClick={() => setShowWishlistOnly(!showWishlistOnly)}
-              className={`w-full flex items-center gap-2 lg:gap-2.5 px-3 py-2 lg:px-3.5 lg:py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-colors active:scale-[0.98] ${
-                showWishlistOnly
-                  ? "bg-red-500 text-white shadow-xs"
-                  : "bg-gray-50 lg:bg-transparent text-gray-700 hover:bg-red-50 hover:text-red-600"
-              }`}
-            >
-              <Heart
-                className={`w-4 h-4 shrink-0 ${
-                  showWishlistOnly ? "fill-white" : ""
-                }`}
-              />
-              <span className="whitespace-nowrap">পছন্দের তালিকা</span>
-            </button>
-          </li>
         </ul>
 
-        {activeMobileSubs.length > 0 && (
+        {/* শুধুমাত্র পেজের মূল মোবাইল হরাইজন্টাল বারের নিচে সাব-ক্যাটাগরি পিল */}
+        {!inDrawer && activeMobileSubs.length > 0 && (
           <div className="flex lg:hidden items-center gap-1.5 overflow-x-auto pt-2.5 mt-2.5 border-t border-gray-100 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {activeMobileSubs.map((subItem) => {
-              const activeSub =
-                !showWishlistOnly && selectedCategory === subItem.value;
-              return (
-                <button
-                  key={subItem.label}
-                  type="button"
-                  onClick={() => {
-                    setShowWishlistOnly(false);
-                    setSelectedCategory(subItem.value);
-                  }}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                    activeSub
-                      ? "bg-green-100 text-green-800 border border-green-300"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {subItem.label}
-                </button>
-              );
-            })}
+            {activeMobileSubs.map((subItem) => (
+              <button
+                key={subItem.label}
+                type="button"
+                onClick={() => handleSubClick(subItem.value)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap border transition shrink-0 ${
+                  selectedCategory === subItem.value
+                    ? "bg-green-100 text-green-800 border-green-300"
+                    : "bg-gray-50 text-gray-600 border-gray-200"
+                }`}
+              >
+                • {subItem.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* পছন্দের তালিকা বাটন (মূল সাইডবারে) */}
+        {!inDrawer && (
+          <div className="hidden lg:block pt-3 mt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => {
+                setExpandedMenu("");
+                setShowWishlistOnly(true);
+              }}
+              className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer ${
+                showWishlistOnly
+                  ? "bg-red-50 text-red-600"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <Heart className="w-4 h-4 text-red-500" />
+              <span>পছন্দের তালিকা</span>
+            </button>
           </div>
         )}
       </div>
@@ -334,3 +373,6 @@ function CategorySidebar({
 }
 
 export default memo(CategorySidebar);
+
+
+

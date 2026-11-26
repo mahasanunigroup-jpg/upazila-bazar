@@ -8,6 +8,7 @@ import Product from "@/models/Product";
 import Order from "@/models/Order";
 import Setting from "@/models/Setting";
 import SellerOverviewCards from "@/components/seller/SellerOverviewCards";
+import SellerCategorySummary from "@/components/seller/SellerCategorySummary";
 import SellerRecentActivity from "@/components/seller/SellerRecentActivity";
 
 export const metadata = {
@@ -36,9 +37,18 @@ async function DashboardContent() {
     ? new mongoose.Types.ObjectId(sellerId)
     : sellerId;
 
-  // শুধু প্রয়োজনীয় ফিল্ডগুলো সিলেক্ট করে দ্রুত কুয়েরি চালানো
-  const [totalProducts, orders, globalSettings] = await Promise.all([
+  const [totalProducts, categoryStats, orders, globalSettings] = await Promise.all([
     Product.countDocuments({ sellerId: sellerObjectId }),
+    Product.aggregate([
+      { $match: { sellerId: sellerObjectId } },
+      {
+        $group: {
+          _id: { $ifNull: ["$category", "সাধারণ"] },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]),
     Order.find({ "items.sellerId": sellerObjectId })
       .select("orderId customer_name status deliveryStatus items createdAt")
       .sort({ createdAt: -1 })
@@ -49,6 +59,11 @@ async function DashboardContent() {
       { projection: { commissionPercent: 1 } }
     ),
   ]);
+
+  const categories = categoryStats.map((c) => ({
+    name: c._id || "সাধারণ",
+    count: c.count || 0,
+  }));
 
   let totalRevenue = 0;
   let pendingOrdersCount = 0;
@@ -86,7 +101,7 @@ async function DashboardContent() {
   const netReceivable = totalRevenue - commissionAmount;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <SellerOverviewCards
         sellerName={sellerName}
         netReceivable={netReceivable}
@@ -96,6 +111,8 @@ async function DashboardContent() {
         pendingOrdersCount={pendingOrdersCount}
         totalProducts={totalProducts}
       />
+
+      <SellerCategorySummary categories={categories} />
 
       <SellerRecentActivity recentOrders={recentOrders} />
     </div>
@@ -114,6 +131,7 @@ export default function SellerDashboardPage() {
               <div className="h-24 bg-white rounded-2xl border border-gray-100" />
               <div className="h-24 bg-white rounded-2xl border border-gray-100" />
             </div>
+            <div className="h-32 bg-white rounded-2xl border border-gray-100" />
             <div className="h-44 bg-white rounded-2xl border border-gray-100" />
           </div>
         }

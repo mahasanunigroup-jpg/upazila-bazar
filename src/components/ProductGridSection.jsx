@@ -1,6 +1,6 @@
 "use client";
+import React, { useState, useEffect } from "react";
 
-import React, { useState } from "react";
 import {
   ShoppingBag,
   Plus,
@@ -15,9 +15,12 @@ import {
 } from "lucide-react";
 
 export default function ProductGridSection({
+  userRole = null,
   loading,
   filteredProducts,
+  currentShopDetails = null,
   availableShops,
+  onOpenShopSelector,
   selectedShop,
   setSelectedShop,
   location,
@@ -32,8 +35,13 @@ export default function ProductGridSection({
   setSelectedProduct,
   handleAddToCart,
   addedId,
+
 }) {
+
   const [currentPage, setCurrentPage] = useState(1);
+  const canShop = userRole !== "seller" && userRole !== "rider";
+
+
   const itemsPerPage = 24; // ২, ৩, ৪, ৬ সব গ্রিডের সাথে নিখুঁতভাবে মেলার জন্য ২৪টি
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -55,17 +63,18 @@ export default function ProductGridSection({
   return (
     <div id="product-grid-top" className="w-full min-w-0">
       {/* দোকান ফিল্টার পিল বার */}
+           {/* দোকান ফিল্টার পিল বার (কম্প্যাক্ট ও স্লিম) */}
       {availableShops.length > 1 && (
-        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-gray-100 shadow-2xs mb-4 w-full overflow-hidden">
-          <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5">
-            <Store className="w-4 h-4 text-green-600 shrink-0" />
+        <div className="bg-white px-2.5 py-2 sm:p-3 rounded-xl border border-gray-100 shadow-2xs mb-2.5 sm:mb-3.5 w-full overflow-hidden">
+          <p className="text-[11px] sm:text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1">
+            <Store className="w-3.5 h-3.5 text-green-600 shrink-0" />
             <span className="truncate">
               {location.upazila
                 ? `${location.upazila} এলাকার দোকানসমূহ:`
                 : "জনপ্রিয় দোকানসমূহ:"}
             </span>
           </p>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {availableShops.map((shop) => (
               <button
                 type="button"
@@ -74,7 +83,7 @@ export default function ProductGridSection({
                   setSelectedShop(selectedShop === shop ? "সব দোকান" : shop);
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition border cursor-pointer shrink-0 ${
+                className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-bold whitespace-nowrap transition border cursor-pointer shrink-0 ${
                   selectedShop === shop
                     ? "bg-green-600 text-white border-green-600 shadow-2xs"
                     : "bg-gray-50 text-gray-700 border-gray-200 hover:border-green-500"
@@ -87,10 +96,45 @@ export default function ProductGridSection({
         </div>
       )}
 
-      {/* হেডার ও সর্ট বার */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4 sm:mb-5 bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-100 shadow-2xs w-full">
-        <h2 className="text-base sm:text-lg font-bold text-gray-800 flex flex-wrap items-center gap-1.5 min-w-0">
-          <ShoppingBag className="w-5 h-5 text-green-600 shrink-0" />
+      {/* নির্বাচিত দোকানের সবুজ ভেরিফায়েড ব্যানার */}
+      {currentShopDetails && (
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-3.5 mb-2.5 sm:mb-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs w-full">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h3 className="font-bold text-xs sm:text-sm truncate">
+                  {currentShopDetails.shopName}
+                </h3>
+                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                  ✨ ভেরিফায়েড
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-xs text-green-50 mt-0.5 truncate">
+                {currentShopDetails.marketName} • ★ {currentShopDetails.avgRating}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedShop("সব দোকান");
+              if (onOpenShopSelector) onOpenShopSelector();
+            }}
+            className="text-[11px] sm:text-xs font-bold bg-white text-green-700 hover:bg-green-50 px-3 py-1.5 rounded-lg transition cursor-pointer w-full sm:w-auto text-center shrink-0"
+          >
+            দোকান পরিবর্তন করুন
+          </button>
+        </div>
+      )}
+
+      {/* হেডার ও সর্ট বার (স্লিম ও কম্প্যাক্ট) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4 bg-white px-2.5 py-2 sm:p-3 rounded-xl border border-gray-100 shadow-2xs w-full">
+        <h2 className="text-xs sm:text-sm font-bold text-gray-800 flex flex-wrap items-center gap-1.5 min-w-0">
+          <ShoppingBag className="w-4 h-4 text-green-600 shrink-0" />
           <span className="break-words">
             {showWishlistOnly
               ? "আপনার পছন্দের তালিকা"
@@ -100,13 +144,13 @@ export default function ProductGridSection({
                   ? "সাম্প্রতিক পণ্যসমূহ"
                   : `${selectedCategory} ক্যাটাগরি`}
           </span>
-          <span className="text-xs font-normal text-gray-400 whitespace-nowrap">
+          <span className="text-[11px] font-normal text-gray-400 whitespace-nowrap">
             ({filteredProducts.length} টি)
           </span>
         </h2>
 
-        <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs sm:text-sm w-full sm:w-auto shrink-0">
-          <SlidersHorizontal className="w-4 h-4 text-gray-400 shrink-0" />
+        <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 text-[11px] sm:text-xs w-full sm:w-auto shrink-0">
+          <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 shrink-0" />
           <select
             value={sortBy}
             onChange={(e) => {
@@ -121,6 +165,7 @@ export default function ProductGridSection({
           </select>
         </div>
       </div>
+
       {loading ? (
         <div className="grid grid-cols-2 min-[540px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2.5 sm:gap-3.5">
           {Array.from({ length: 12 }).map((_, idx) => (
@@ -292,15 +337,18 @@ export default function ProductGridSection({
                   </div>
 
 
-                  {/* কার্ডের একদম নিচে পুরো প্রস্থ জুড়ে থাকা কার্ট বাটন */}
-                                   {/* কার্ডের একদম নিচে পুরো প্রস্থ জুড়ে থাকা কার্ট বাটন (সব ডিভাইসে এক লাইনে) */}
+                                    {/* কার্ডের একদম নিচে পুরো প্রস্থ জুড়ে থাকা কার্ট বাটন (শুধুমাত্র কাস্টমার বা গেস্টের জন্য) */}
+                                    {/* কার্ডের একদম নিচে পুরো প্রস্থ জুড়ে থাকা কার্ট বাটন (সবসময় দেখাবে, সেলার/রাইডারের জন্য নিষ্ক্রিয়) */}
                   <button
                     type="button"
-                    onClick={() => handleAddToCart(product)}
-                    className={`w-full py-2 px-1.5 text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 whitespace-nowrap transition-colors cursor-pointer border-t ${
-                      isAdded
-                        ? "bg-emerald-600 text-white border-emerald-600"
-                        : "bg-green-50/90 hover:bg-green-600 text-green-700 hover:text-white border-green-100 hover:border-green-600"
+                    disabled={!canShop}
+                    onClick={() => canShop && handleAddToCart(product)}
+                    className={`w-full py-2 px-1.5 text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 whitespace-nowrap transition-colors border-t ${
+                      !canShop
+                        ? "bg-green-50/70 text-green-700/75 border-green-100 cursor-not-allowed"
+                        : isAdded
+                        ? "bg-emerald-600 text-white border-emerald-600 cursor-pointer"
+                        : "bg-green-50/90 hover:bg-green-600 text-green-700 hover:text-white border-green-100 hover:border-green-600 cursor-pointer"
                     }`}
                   >
                     {isAdded ? (
