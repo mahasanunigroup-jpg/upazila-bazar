@@ -1,5 +1,46 @@
 import mongoose from "mongoose";
 
+// কাস্টমারের একাধিক ডেলিভারি ঠিকানার সাব-স্কিমা
+const addressSchema = new mongoose.Schema(
+  {
+    label: {
+      type: String,
+      enum: ["বাসা", "অফিস", "দোকান", "অন্যান্য"],
+      default: "বাসা",
+    },
+    receiverName: {
+      type: String,
+      required: [true, "প্রাপকের নাম আবশ্যক"],
+      trim: true,
+    },
+    phone: {
+      type: String,
+      required: [true, "মোবাইল নম্বর আবশ্যক"],
+      trim: true,
+    },
+    union: {
+      type: String,
+      required: [true, "ইউনিয়ন বা পৌরসভার নাম আবশ্যক"],
+      trim: true,
+    },
+    villageOrWard: {
+      type: String,
+      required: [true, "গ্রাম বা ওয়ার্ডের তথ্য আবশ্যক"],
+      trim: true,
+    },
+    landmark: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    isDefault: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: true }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -21,6 +62,14 @@ const userSchema = new mongoose.Schema(
       ],
       default: "customer",
     },
+    // কর্পোরেট কাস্টমার পরিচয়
+    accountType: {
+      type: String,
+      enum: ["regular", "corporate"],
+      default: "corporate",
+    },
+    companyName: { type: String, trim: true, default: "" },
+
     customId: { type: String, unique: true, sparse: true },
     shopName: { type: String, default: "" },
     marketName: { type: String, default: "" }, // সেলারের বাজার / হাটের নাম (যেমন: আমতলা বাজার, হাজী মার্কেট)
@@ -30,6 +79,13 @@ const userSchema = new mongoose.Schema(
     union: { type: String, default: "" },
     moholla: { type: String, default: "" }, // গ্রাম / মহল্লা বা বাজারের নাম
     address: { type: String, default: "" },
+
+    // কাস্টমারের সেভ করা ডেলিভারি ঠিকানাসমূহ
+    addresses: {
+      type: [addressSchema],
+      default: [],
+    },
+
     // অ্যাডমিন ও রাইডারের বিস্তারিত বায়োডাটা
     biodata: {
       avatar: { type: String, default: "" },
@@ -54,7 +110,7 @@ const userSchema = new mongoose.Schema(
     activeSessionId: { type: String, default: "" },
     lastActiveAt: { type: Date, default: null },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 userSchema.index({ role: 1, division: 1, district: 1, upazila: 1, union: 1, marketName: 1 });

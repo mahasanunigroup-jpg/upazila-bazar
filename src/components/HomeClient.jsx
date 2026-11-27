@@ -42,8 +42,7 @@ export default function HomeClient({
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(initialUser);
-    const [openDrawerForShop, setOpenDrawerForShop] = useState(false);
-
+  const [openDrawerForShop, setOpenDrawerForShop] = useState(false);
 
   useEffect(() => {
     try {
@@ -73,12 +72,16 @@ export default function HomeClient({
   const handleAddToCart = (product) => {
     const idx = cart.findIndex((item) => item._id === product._id);
     const updated = [...cart];
-    if (idx > -1) updated[idx].quantity += 1;
-    else {
-      updated.push({
+    if (idx > -1) {
+      updated[idx].quantity = Number((updated[idx].quantity + 1).toFixed(2));
+    } else {
+       updated.push({
         _id: product._id,
         title: product.title,
         price: product.price,
+        sellingType: product.sellingType || "",
+        piecesPerBox: product.piecesPerBox || 0,
+        category: product.category || "",
         image: product.image,
         quantity: 1,
         sellerId: product.sellerId || "seller_default",
@@ -90,11 +93,12 @@ export default function HomeClient({
     setTimeout(() => setAddedId(null), 1000);
   };
 
+  // ০.২৫ (২৫০ গ্রাম) বা ০.৫ (৫০০ গ্রাম) সাপোর্টসহ আপডেট লজিক
   const handleUpdateQty = (id, newQty) => {
-    if (newQty < 1) return syncCart(cart.filter((item) => item._id !== id));
+    if (newQty <= 0) return syncCart(cart.filter((item) => item._id !== id));
     syncCart(
       cart.map((item) =>
-        item._id === id ? { ...item, quantity: newQty } : item,
+        item._id === id ? { ...item, quantity: Number(newQty) } : item,
       ),
     );
   };
@@ -176,7 +180,7 @@ export default function HomeClient({
   );
 
   const isSeller = currentUser?.role === "seller";
-  const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCartItems = cart.length;
   const hasActiveFilter = Boolean(
     searchQuery ||
     selectedCategory !== "সব পণ্য" ||
@@ -184,11 +188,10 @@ export default function HomeClient({
     selectedShop !== "সব দোকান" ||
     showWishlistOnly,
   );
-
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-gray-50 flex flex-col justify-between">
       <div className="w-full">
-                <HomeHeader
+        <HomeHeader
           initialUser={currentUser}
           selectedCategory={selectedCategory}
           externalOpenDrawer={openDrawerForShop}

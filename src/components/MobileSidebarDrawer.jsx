@@ -39,7 +39,7 @@ export default function MobileSidebarDrawer({
   const router = useRouter();
   const [hasRegistered, setHasRegistered] = useState(false);
 
-   useEffect(() => {
+  useEffect(() => {
     try {
       const regFlag = localStorage.getItem("upazila_registered");
       setHasRegistered(regFlag === "true");
@@ -47,7 +47,6 @@ export default function MobileSidebarDrawer({
       setHasRegistered(false);
     }
   }, [isOpen]);
-
 
   useEffect(() => {
     if (currentUser) {
@@ -139,6 +138,7 @@ export default function MobileSidebarDrawer({
               </button>
             </div>
           </div>
+
           {/* মেনু ও ড্যাশবোর্ড লিংক */}
           <div className="p-3 space-y-1 border-b border-gray-100">
             <p className="px-2.5 py-1 text-[11px] font-bold text-gray-400 uppercase">
@@ -182,13 +182,22 @@ export default function MobileSidebarDrawer({
             )}
 
             {currentUser?.role === "customer" && (
-              <Link
-                href="/orders"
-                onClick={onClose}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                <LayoutDashboard className="w-4 h-4 text-green-600" /> আমার অর্ডারসমূহ
-              </Link>
+              <>
+                <Link
+                  href="/customer/dashboard"
+                  onClick={onClose}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-green-700 bg-green-50 hover:bg-green-100 transition"
+                >
+                  <LayoutDashboard className="w-4 h-4 text-green-600" /> ড্যাশবোর্ড ও ঠিকানা
+                </Link>
+                <Link
+                  href="/orders"
+                  onClick={onClose}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <ClipboardList className="w-4 h-4 text-green-600" /> আমার অর্ডারসমূহ
+                </Link>
+              </>
             )}
 
             {!currentUser && (
@@ -210,7 +219,6 @@ export default function MobileSidebarDrawer({
                 )}
               </Link>
             )}
-
             {/* শুধুমাত্র কাস্টমার বা গেস্ট ইউজারদের জন্য শপিং ব্যাগ ও পছন্দের তালিকা */}
             {currentUser?.role !== "seller" && currentUser?.role !== "rider" && (
               <>

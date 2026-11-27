@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import Order from "@/models/Order";
 import Product from "@/models/Product";
+import User from "@/models/User";
 
 function extractNumber(val) {
   if (typeof val === "number") return val;
@@ -32,7 +33,7 @@ export async function GET() {
   try {
     await connectDB();
     const user = await getUserFromCookie();
-    const userId = user ? (user.userId || user.id) : null;
+    const userId = user ? user.userId || user.id : null;
 
     const query = userId ? { customerId: userId } : {};
 
@@ -41,6 +42,24 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
+
+    // সব অর্ডারের সব আইটেম থেকে ইউনিক sellerId সংগ্রহ করা
+    const sellerIds = [
+      ...new Set(
+        rawOrders.flatMap((o) =>
+          (o.items || [])
+            .map((i) => i.sellerId?.toString())
+            .filter((id) => mongoose.Types.ObjectId.isValid(id))
+        )
+      ),
+    ];
+
+    // একসাথে সব সেলারের নাম, দোকানের নাম ও ফোন নম্বর নিয়ে আসা
+    const sellers = await User.find({ _id: { $in: sellerIds } })
+      .select("name shopName phone")
+      .lean();
+
+    const sellerMap = new Map(sellers.map((s) => [s._id.toString(), s]));
 
     const formattedOrders = rawOrders.map((o) => {
       const shops = [...new Set((o.items || []).map((i) => i.shopName).filter(Boolean))];
@@ -52,9 +71,10 @@ export async function GET() {
           month: "long",
           year: "numeric",
         }),
-        total: `৳${o.total_amount || 0}`,
+        total: `৳${Math.round(o.total_amount || 0)}`,
         status: o.deliveryStatus === "delivered" ? "delivered" : o.status || "pending",
         paymentMethod: o.payment_method || "Cash on Delivery",
+        address: `${o.customer_address || ""}, ${o.upazila || ""}${o.district ? `, ${o.district}` : ""}`,
         customerAddress: `${o.customer_address || ""}, ${o.upazila || ""}${o.district ? `, ${o.district}` : ""}`,
         rider: o.riderId
           ? {
@@ -64,7 +84,6 @@ export async function GET() {
             }
           : null,
         shops: shops.length > 0 ? shops : ["উপজেলা ভেরিফায়েড স্টোর"],
-        // নতুন যুক্ত করা হলো: রিলোড দিলেও যেন ফিডব্যাক থেকে যায়
         feedback:
           o.feedback && (o.feedback.isSubmitted || o.feedback.sellerRating || o.feedback.riderRating)
             ? {
@@ -75,12 +94,17 @@ export async function GET() {
                 riderComment: o.feedback.riderComment || "",
               }
             : null,
-        items: (o.items || []).map((i) => ({
-          name: i.name || i.title || "পণ্য",
-          qty: `${i.qty || 1} টি`,
-          price: `৳${(i.price || 0) * (i.qty || 1)}`,
-          shopName: i.shopName || "উপজেলা ভেরিফায়েড স্টোর",
-        })),
+        items: (o.items || []).map((i) => {
+          const sellerInfo = sellerMap.get(i.sellerId?.toString()) || {};
+          return {
+            name: i.name || i.title || "পণ্য",
+            qty: `${i.qty || 1} টি`,
+            price: `৳${Math.round((i.price || 0) * (i.qty || 1))}`,
+            shopName: i.shopName || sellerInfo.shopName || "উপজেলা ভেরিফায়েড স্টোর",
+            sellerName: sellerInfo.name || "",
+            sellerPhone: sellerInfo.phone || "",
+          };
+        }),
       };
     });
 
@@ -91,7 +115,7 @@ export async function GET() {
   }
 }
 
-// ২. চেকআউট থেকে নতুন অর্ডার তৈরির POST API (একদম আগের মতোই রাখা হয়েছে)
+// ২. চেকআউট থেকে নতুন অর্ডার তৈরির POST API
 export async function POST(req) {
   try {
     await connectDB();
@@ -111,7 +135,7 @@ export async function POST(req) {
     }
 
     const user = await getUserFromCookie();
-    const customerId = user ? (user.userId || user.id) : null;
+    const customerId = user ? user.userId || user.id : null;
 
     const validProductIds = items
       .map((i) => i.productId || i._id || i.id)
@@ -161,7 +185,7 @@ export async function POST(req) {
       district,
       upazila,
       customer_address: customer_address || "",
-      total_amount: calculatedTotal,
+      total_amount: Math.round(calculatedTotal),
       payment_method,
       items: verifiedItems,
     });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import Otp from "@/models/Otp";
 
 export async function POST(req) {
   try {
@@ -21,14 +22,23 @@ export async function POST(req) {
       union,
       moholla,
       address,
+      otp,
     } = body;
 
-    if (!name || !password || (!email && !phone)) {
+    if (!name || !password || !email || !phone) {
       return NextResponse.json(
-        { error: "নাম, পাসওয়ার্ড এবং ইমেইল বা ফোন নম্বর দিন" },
+        { error: "নাম, ইমেইল, মোবাইল নম্বর এবং পাসওয়ার্ড আবশ্যক" },
         { status: 400 }
       );
     }
+
+        if (!otp || !otp.toString().trim()) {
+      return NextResponse.json(
+        { error: "ভেরিফিকেশন টোকেন পাওয়া যায়নি!" },
+        { status: 400 }
+      );
+    }
+
 
     if (role === "seller" && (!shopName?.trim() || !marketName?.trim())) {
       return NextResponse.json(
@@ -37,11 +47,31 @@ export async function POST(req) {
       );
     }
 
-    const queryConditions = [];
-    if (email) queryConditions.push({ email: email.trim().toLowerCase() });
-    if (phone) queryConditions.push({ phone: phone.trim() });
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
 
-    const existingUser = await User.findOne({ $or: queryConditions }).lean();
+    // ১. ইমেইল OTP যাচাই করা
+    const otpRecord = await Otp.findOne({ email: cleanEmail });
+    if (!otpRecord) {
+      return NextResponse.json(
+        { error: "OTP কোডের মেয়াদ শেষ হয়ে গেছে! অনুগ্রহ করে আবার কোড পাঠান।" },
+        { status: 400 }
+      );
+    }
+
+    const isOtpValid = await bcrypt.compare(otp.toString().trim(), otpRecord.otpHash);
+    if (!isOtpValid) {
+      return NextResponse.json(
+        { error: "ভুল OTP কোড দিয়েছেন! ইমেইল দেখে সঠিক কোডটি বসান।" },
+        { status: 400 }
+      );
+    }
+
+    // ২. ইউজার ইতিমধ্যে আছে কি না চেক করা
+    const existingUser = await User.findOne({
+      $or: [{ email: cleanEmail }, { phone: cleanPhone }],
+    }).lean();
+
     if (existingUser) {
       return NextResponse.json(
         { error: "এই ইমেইল বা ফোন নম্বর দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে" },
@@ -51,21 +81,27 @@ export async function POST(req) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const finalMarket = (marketName || moholla || "").trim();
+    const finalRole = role || "customer";
 
+    // ৩. নতুন ইউজার তৈরি করা (কাস্টমার হলে কর্পোরেট অ্যাকাউন্ট হিসেবে সেট হবে)
     const user = await User.create({
       name: name.trim(),
-      email: email ? email.trim().toLowerCase() : undefined,
-      phone: phone ? phone.trim() : undefined,
+      email: cleanEmail,
+      phone: cleanPhone,
       password: hashedPassword,
-      role: role || "customer",
-      shopName: role === "seller" ? shopName.trim() : "",
-      marketName: role === "seller" ? finalMarket : "",
+      role: finalRole,
+      accountType: finalRole === "customer" ? "corporate" : "regular",
+      shopName: finalRole === "seller" ? shopName.trim() : "",
+      marketName: finalRole === "seller" ? finalMarket : "",
       district: district || "",
       upazila: upazila || "",
       union: union || "",
       moholla: finalMarket,
       address: address ? address.trim() : "",
     });
+
+    // ৪. ব্যবহৃত OTP মুছে ফেলা
+    await Otp.deleteMany({ email: cleanEmail });
 
     return NextResponse.json(
       {
@@ -76,6 +112,7 @@ export async function POST(req) {
           email: user.email,
           phone: user.phone,
           role: user.role,
+          accountType: user.accountType,
           shopName: user.shopName,
           marketName: user.marketName,
         },

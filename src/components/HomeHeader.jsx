@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
+  User,
 } from "lucide-react";
 
 const PROMO_SLIDES = [
@@ -45,7 +46,6 @@ export default function HomeHeader({
   onOpenWishlist,
   onSelectCategory,
 }) {
-
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLocModalOpen, setIsLocModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -71,21 +71,18 @@ export default function HomeHeader({
     return () => clearInterval(timer);
   }, []);
 
-
-    useEffect(() => {
+  useEffect(() => {
     const openModalHandler = () => setIsLocModalOpen(true);
     window.addEventListener("open_location_modal", openModalHandler);
     return () => window.removeEventListener("open_location_modal", openModalHandler);
   }, []);
 
-
-    useEffect(() => {
+  useEffect(() => {
     if (externalOpenDrawer) {
       setIsMobileMenuOpen(true);
       if (onDrawerOpened) onDrawerOpened();
     }
   }, [externalOpenDrawer, onDrawerOpened]);
-
 
   const handleSaveLocation = (cleanedLoc) => {
     setLocation(cleanedLoc);
@@ -106,7 +103,7 @@ export default function HomeHeader({
 
   return (
     <>
-             <nav className="bg-white shadow-xs sticky top-0 z-40 border-b border-gray-100 w-full">
+      <nav className="bg-white shadow-xs sticky top-0 z-40 border-b border-gray-100 w-full">
         <div className="max-w-[1600px] mx-auto px-1.5 sm:px-4 h-11 sm:h-16 flex items-center justify-between gap-1 sm:gap-3">
           {/* বাম পাশ: স্লিম মেনু + ছোট সাইট লোগো + লোকেশন */}
           <div className="flex items-center gap-1 sm:gap-2.5 min-w-0 flex-1">
@@ -149,30 +146,63 @@ export default function HomeHeader({
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
 
-          {/* ডান পাশ: রোল বাটন ও একদম ছোট ব্যাগ বাটন */}
+          {/* ডান পাশ: রোল বাটন ও ব্যাগ বাটন */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <div className="hidden lg:flex items-center gap-2.5">
               {currentUser?.role === "seller" && (
-                <Link href="/seller/orders" className="text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 transition whitespace-nowrap">
+                <Link
+                  href="/seller/orders"
+                  className="text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 transition whitespace-nowrap"
+                >
                   অর্ডার ড্যাশবোর্ড
                 </Link>
               )}
               {currentUser?.role === "rider" && (
-                <Link href="/rider/dashboard" className="text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3.5 py-1.5 rounded-full border border-blue-200 transition whitespace-nowrap">
+                <Link
+                  href="/rider/dashboard"
+                  className="text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3.5 py-1.5 rounded-full border border-blue-200 transition whitespace-nowrap"
+                >
                   রাইডার প্যানেল
                 </Link>
               )}
               {currentUser?.role === "customer" && (
-                <Link href="/orders" className="text-sm font-semibold text-gray-700 hover:text-green-600 whitespace-nowrap">
-                  আমার অর্ডার
-                </Link>
+                <>
+                  <Link
+                    href="/orders"
+                    className="text-sm font-semibold text-gray-700 hover:text-green-600 px-2 whitespace-nowrap transition"
+                  >
+                    আমার অর্ডার
+                  </Link>
+                  <Link
+                    href="/customer/dashboard"
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-green-700 bg-green-50 hover:bg-green-100 px-3.5 py-1.5 rounded-full border border-green-200 transition whitespace-nowrap"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>ড্যাশবোর্ড</span>
+                  </Link>
+                </>
               )}
               {!currentUser && (
-                <Link href="/login" className="text-sm font-bold text-gray-700 hover:text-green-600 px-2 whitespace-nowrap">
+                <Link
+                  href="/login"
+                  className="text-sm font-bold text-gray-700 hover:text-green-600 px-2 whitespace-nowrap"
+                >
                   লগইন
                 </Link>
               )}
             </div>
+
+            {/* মোবাইলে কাস্টমারের জন্য শর্টকাট প্রোফাইল/ড্যাশবোর্ড বাটন */}
+            {currentUser?.role === "customer" && (
+              <Link
+                href="/customer/dashboard"
+                aria-label="কাস্টমার ড্যাশবোর্ড"
+                className="lg:hidden inline-flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 sm:px-2.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold shrink-0"
+              >
+                <User className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden min-[400px]:inline">প্রোফাইল</span>
+              </Link>
+            )}
 
             {isCustomerOrGuest && (
               <button
@@ -190,47 +220,46 @@ export default function HomeHeader({
           </div>
         </div>
       </nav>
-
-
-
-      {/* হিরো ব্যানার (ট্র্যাকিং ইনপুট ছাড়া ক্লিন ও কম্প্যাক্ট) */}
-          {/* হিরো ব্যানার (ফিক্সড উচ্চতা—স্লাইড পরিবর্তনে আর কাঁপবে না) */}
+      {/* হিরো ব্যানার */}
       <section className="max-w-[1600px] mx-auto px-2.5 sm:px-4 pt-1.5 sm:pt-4 w-full">
         <div
           className={`${activePromo.bg} rounded-xl sm:rounded-2xl px-3 py-3 sm:py-8 md:py-10 sm:px-10 text-white relative overflow-hidden shadow-sm min-h-[82px] sm:min-h-[155px] md:min-h-[185px] flex items-center justify-center transition-colors duration-300`}
         >
+          <button
+            type="button"
+            aria-label="পূর্ববর্তী স্লাইড"
+            onClick={() =>
+              setCurrentSlide((prev) => (prev - 1 + PROMO_SLIDES.length) % PROMO_SLIDES.length)
+            }
+            className="absolute left-2 sm:left-4 p-1 sm:p-2 rounded-full bg-black/15 hover:bg-black/25 text-white transition cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
           <div className="max-w-2xl mx-auto text-center space-y-1 sm:space-y-2.5 px-6 sm:px-10 w-full">
             <span className="hidden sm:inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
               {activePromo.badge}
             </span>
-            <h1 className="text-xs min-[380px]:text-sm sm:text-2xl md:text-4xl font-extrabold leading-snug">
+            <h1 className="text-xs min-[380px]:text-sm sm:text-2xl md:text-3xl font-extrabold leading-snug">
               {activePromo.title}
             </h1>
-            <p className="hidden md:block text-green-50 text-sm leading-relaxed">
+            <p className="text-[10px] sm:text-sm md:text-base text-green-50 line-clamp-2">
               {activePromo.subtitle}
             </p>
           </div>
 
           <button
             type="button"
-            aria-label="পূর্ববর্তী স্লাইড"
-            onClick={() => setCurrentSlide((p) => (p === 0 ? PROMO_SLIDES.length - 1 : p - 1))}
-            className="absolute left-1.5 sm:left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 p-1 sm:p-1.5 rounded-full text-white cursor-pointer"
-          >
-            <ChevronLeft className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
-          </button>
-          <button
-            type="button"
             aria-label="পরবর্তী স্লাইড"
-            onClick={() => setCurrentSlide((p) => (p + 1) % PROMO_SLIDES.length)}
-            className="absolute right-1.5 sm:right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 p-1 sm:p-1.5 rounded-full text-white cursor-pointer"
+            onClick={() => setCurrentSlide((prev) => (prev + 1) % PROMO_SLIDES.length)}
+            className="absolute right-2 sm:right-4 p-1 sm:p-2 rounded-full bg-black/15 hover:bg-black/25 text-white transition cursor-pointer"
           >
-            <ChevronRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </section>
 
-
+            {/* মোবাইল সাইডবার ড্রয়ার ও লোকেশন মডাল */}
       <MobileSidebarDrawer
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
@@ -241,15 +270,16 @@ export default function HomeHeader({
         onOpenCart={onOpenCart}
         wishlistCount={wishlistCount}
         onOpenWishlist={onOpenWishlist}
-        onSelectCategory={onSelectCategory}
         selectedCategory={selectedCategory}
+        onSelectCategory={onSelectCategory}
         marketProps={marketProps}
       />
+
 
       <LocationModal
         isOpen={isLocModalOpen}
         onClose={() => setIsLocModalOpen(false)}
-        location={location}
+        currentLocation={location}
         onSave={handleSaveLocation}
       />
     </>
